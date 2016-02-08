@@ -1,18 +1,25 @@
 package main
 
 import (
-	"net"
-	"fmt"
+	"MDFS/config"
+	"MDFS/utils"
 	"bufio"
-	"strings" // only needed for sample processing
+	"fmt"
+	"net"
+	"strings"
 )
 
 func main() {
 
 	fmt.Println("Launching server...")
 
-	// listen on all interfaces
-	ln, _ := net.Listen("tcp", ":8081")
+	// get configuration settings from config file
+	// TODO relative vs abosolute file path
+	// requires absolute fp when installed
+	conf := config.ParseConfiguration("config/tcp-server-conf.json")
+
+	// listen on specified port
+	ln, _ := net.Listen(conf.Protocol, conf.Port)
 
 	// accept connection on port
 	conn, _ := ln.Accept()
@@ -21,15 +28,21 @@ func main() {
 	for {
 
 		// will listen for message to process ending in newline (\n)
-		message, _ := bufio.NewReader(conn).ReadString('\n')
+		hash, _ := bufio.NewReader(conn).ReadString('\n')
+		hash = strings.TrimSpace(string(hash))
 
 		// output messsage received
-		fmt.Print("Message Received: ", string(message))
+		fmt.Println("Hash Received:", hash)
 
-		// sample process for string received
-		newmessage := strings.ToUpper(message)
+		// check if received hash value exists
+		var message string
+		if utils.CheckForHash(conf.Path, hash) {
+			message = "file exists on storage node"
+		} else {
+			message = "file does not exist on storage node"
+		}
 
 		// send new string back to client
-		conn.Write([]byte(newmessage + "\n"))
+		conn.Write([]byte(message + "\n"))
 	}
 }

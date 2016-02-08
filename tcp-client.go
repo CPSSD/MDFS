@@ -1,26 +1,31 @@
 package main
 
 import (
-	"net"
-	"fmt"
 	"bufio"
+	"fmt"
+	"net"
 	"os"
 )
 
 func main() {
 
+	// doesn't get configuration from file
+	// it will get it from metadata service
+	protocol := "tcp"
+	socket := "127.0.0.1:8081"
+
 	// connect to this socket
-	conn, _ := net.Dial("tcp", "127.0.0.1:8081")
+	conn, _ := net.Dial(protocol, socket)
 
 	for {
 
 		// read in input from stdin
 		reader := bufio.NewReader(os.Stdin)
-		fmt.Print("Text to send: ")
+		fmt.Print("File hash to request: ")
 		text, _ := reader.ReadString('\n')
 
 		// send to socket
-		fmt.Fprint(conn, text + "\n")
+		fmt.Fprint(conn, text+"\n")
 
 		// listen for reply
 		message, _ := bufio.NewReader(conn).ReadString('\n')
