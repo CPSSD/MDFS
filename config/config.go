@@ -10,7 +10,6 @@ type Configuration struct {
 	Protocol string
 	Port     string
 	Path     string
-	Socket   string
 }
 
 func ParseConfiguration(filename string) Configuration {
