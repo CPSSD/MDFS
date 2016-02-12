@@ -17,18 +17,18 @@ func main() {
 	// connect to this socket
 	conn, _ := net.Dial(protocol, socket)
 
-	for {
+	// read in input from stdin
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Print("File hash to request: ")
+	text, _ := reader.ReadString('\n')
 
-		// read in input from stdin
-		reader := bufio.NewReader(os.Stdin)
-		fmt.Print("File hash to request: ")
-		text, _ := reader.ReadString('\n')
+	// send to socket
+	fmt.Fprint(conn, text+"\n")
 
-		// send to socket
-		fmt.Fprint(conn, text+"\n")
+	// listen for reply
+	message, _ := bufio.NewReader(conn).ReadString('\n')
+	fmt.Print("Message received from server: " + message)
 
-		// listen for reply
-		message, _ := bufio.NewReader(conn).ReadString('\n')
-		fmt.Print("Message received from server: " + message)
-	}
+	// close the connection
+	conn.Close()
 }

@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"fmt"
 	"net"
+	"os"
 	"strings"
 )
 
@@ -19,30 +20,51 @@ func main() {
 	conf := config.ParseConfiguration("config/tcp-server-conf.json")
 
 	// listen on specified port
-	ln, _ := net.Listen(conf.Protocol, conf.Port)
+	ln, err := net.Listen(conf.Protocol, conf.Port)
+	if err != nil {
+		fmt.Println("Error listening:", err.Error())
+		os.Exit(1)
+	}
 
-	// accept connection on port
-	conn, _ := ln.Accept()
+	// close the listener when the application closes
+	defer ln.Close()
+	fmt.Println("Listening on " + conf.Port)
 
 	// run loop forever (or until ctrl-c)
 	for {
-
-		// will listen for message to process ending in newline (\n)
-		hash, _ := bufio.NewReader(conn).ReadString('\n')
-		hash = strings.TrimSpace(string(hash))
-
-		// output messsage received
-		fmt.Println("Hash Received:", hash)
-
-		// check if received hash value exists
-		var message string
-		if utils.CheckForHash(conf.Path, hash) {
-			message = "file exists on storage node"
-		} else {
-			message = "file does not exist on storage node"
+		// accept connection on port
+		conn, err := ln.Accept()
+		if err != nil {
+			fmt.Println("Error accpting:", err.Error())
+			os.Exit(1)
 		}
 
-		// send new string back to client
-		conn.Write([]byte(message + "\n"))
+		// handle connection in new goroutine
+		go handleRequest(conn, conf.Path)
 	}
+}
+
+// handles incoming requests
+func handleRequest(conn net.Conn, path string) {
+
+	// will listen for message to process ending in newline (\n)
+	hash, _ := bufio.NewReader(conn).ReadString('\n')
+	hash = strings.TrimSpace(string(hash))
+
+	// output messsage received
+	fmt.Println("Hash Received:", hash)
+
+	// check if received hash value exists
+	var message string
+	if utils.CheckForHash(path, hash) {
+		message = "file exists on storage node"
+	} else {
+		message = "file does not exist on storage node"
+	}
+
+	// send new string back to client
+	conn.Write([]byte(message + "\n"))
+
+	// close connection
+	conn.Close()
 }
