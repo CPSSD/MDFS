@@ -43,7 +43,11 @@ func main() {
 	}
 }
 
+// checks request code and calls corresponding function
 func handleRequest(conn net.Conn) {
+
+	// will eventually check codes
+	// only handles receiving files right now
 	output := "/path/to/files/output.jpg"
 	utils.ReceiveFile(conn, output)
 }
