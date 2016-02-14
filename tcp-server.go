@@ -3,11 +3,9 @@ package main
 import (
 	"MDFS/config"
 	"MDFS/utils"
-	"bufio"
 	"fmt"
 	"net"
 	"os"
-	"strings"
 )
 
 func main() {
@@ -32,6 +30,7 @@ func main() {
 
 	// run loop forever (or until ctrl-c)
 	for {
+
 		// accept connection on port
 		conn, err := ln.Accept()
 		if err != nil {
@@ -40,31 +39,11 @@ func main() {
 		}
 
 		// handle connection in new goroutine
-		go handleRequest(conn, conf.Path)
+		go handleRequest(conn)
 	}
 }
 
-// handles incoming requests
-func handleRequest(conn net.Conn, path string) {
-
-	// will listen for message to process ending in newline (\n)
-	hash, _ := bufio.NewReader(conn).ReadString('\n')
-	hash = strings.TrimSpace(string(hash))
-
-	// output messsage received
-	fmt.Println("Hash Received:", hash)
-
-	// check if received hash value exists
-	var message string
-	if utils.CheckForHash(path, hash) {
-		message = "file exists on storage node"
-	} else {
-		message = "file does not exist on storage node"
-	}
-
-	// send new string back to client
-	conn.Write([]byte(message + "\n"))
-
-	// close connection
-	conn.Close()
+func handleRequest(conn net.Conn) {
+	output := "/path/to/files/output.jpg"
+	utils.ReceiveFile(conn, output)
 }

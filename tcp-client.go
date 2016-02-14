@@ -1,10 +1,8 @@
 package main
 
 import (
-	"bufio"
-	"fmt"
 	"net"
-	"os"
+	"MDFS/utils"
 )
 
 func main() {
@@ -15,20 +13,11 @@ func main() {
 	socket := "127.0.0.1:8081"
 
 	// connect to this socket
+	// there should probably be error checking here
 	conn, _ := net.Dial(protocol, socket)
 
-	// read in input from stdin
-	reader := bufio.NewReader(os.Stdin)
-	fmt.Print("File hash to request: ")
-	text, _ := reader.ReadString('\n')
-
-	// send to socket
-	fmt.Fprint(conn, text+"\n")
-
-	// listen for reply
-	message, _ := bufio.NewReader(conn).ReadString('\n')
-	fmt.Print("Message received from server: " + message)
-
-	// close the connection
-	conn.Close()
+	// send file to server
+	// hardcoded for testing purposes
+	filepath := "/path/to/files/input.jpg"
+	utils.SendFile(conn, filepath)
 }
