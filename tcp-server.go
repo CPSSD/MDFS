@@ -3,6 +3,7 @@ package main
 import (
 	"MDFS/config"
 	"MDFS/utils"
+	"bufio"
 	"fmt"
 	"net"
 	"os"
@@ -46,8 +47,17 @@ func main() {
 // checks request code and calls corresponding function
 func handleRequest(conn net.Conn) {
 
-	// will eventually check codes
-	// only handles receiving files right now
-	output := "/path/to/files/output.jpg"
-	utils.ReceiveFile(conn, output)
+	// create read buffer for tcp connection
+	r := bufio.NewReader(conn)
+
+	// var code uint8
+	code, _ := r.ReadByte()
+
+	switch code {
+	case 1:
+		output := "/path/to/files/output"
+		utils.ReceiveFile(conn, r, output)
+	default:
+		conn.Close()
+	}
 }

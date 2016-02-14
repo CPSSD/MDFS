@@ -3,6 +3,7 @@ package main
 import (
 	"net"
 	"MDFS/utils"
+	"bufio"
 )
 
 func main() {
@@ -16,8 +17,21 @@ func main() {
 	// there should probably be error checking here
 	conn, _ := net.Dial(protocol, socket)
 
+	// create a write buffer for the tcp connection
+	w := bufio.NewWriter(conn)
+
+	// create byte to hold handler code
+	var code uint8
+	code = 1
+
+	// send code to the server
+	err := w.WriteByte(code)
+	if err != nil {
+		panic(err)
+	}
+
 	// send file to server
 	// hardcoded for testing purposes
-	filepath := "/path/to/files/input.jpg"
-	utils.SendFile(conn, filepath)
+	filepath := "/path/to/files/test"
+	utils.SendFile(conn, w, filepath)
 }

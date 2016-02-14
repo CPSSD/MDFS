@@ -1,0 +1,18 @@
+{
+	"client": {
+
+		"1": "send",
+		"2": "request"
+	},
+
+	"storagenode": {
+
+		"1": "receive",
+		"2": "send"
+	},
+
+	"metadata": {
+
+		
+	}
+}

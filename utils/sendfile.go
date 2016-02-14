@@ -7,7 +7,7 @@ import (
 	"io"
 )
 
-func SendFile(conn net.Conn, filepath string) {
+func SendFile(conn net.Conn, w *bufio.Writer, filepath string) {
 
 	// open input file
 	fi, err := os.Open(filepath)
@@ -24,9 +24,6 @@ func SendFile(conn net.Conn, filepath string) {
 
 	// create read buffer for the file
 	r := bufio.NewReader(fi)
-
-	// create a write buffer for the tcp connection
-	w := bufio.NewWriter(conn)
 
 	// make a buffer to hold read chunks
 	buf := make([]byte, 1024)

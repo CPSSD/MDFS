@@ -7,10 +7,7 @@ import (
 	"io"
 )
 
-func ReceiveFile(conn net.Conn, filepath string) {
-
-	// create read buffer for tcp connection
-	r := bufio.NewReader(conn)
+func ReceiveFile(conn net.Conn, r *bufio.Reader, filepath string) {
 
 	// open output file
 	fo, err := os.Create(filepath)
