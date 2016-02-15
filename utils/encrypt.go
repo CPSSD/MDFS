@@ -5,12 +5,12 @@ import (
     "crypto/aes"
     "crypto/cipher"
     "crypto/rand"
-//    "os"
+    // "os"
     "io"
-    "fmt"
+    // "fmt"
 )
 
-func GenSymmetricKey() (block cipher.Block, err error)  {
+func GenCipherBlock() (block cipher.Block, err error)  {
 
     // create a byte array 32 bytes long
     data := make([]byte, 32)
@@ -26,27 +26,34 @@ func GenSymmetricKey() (block cipher.Block, err error)  {
     return
 }
 
-func GenCipherText(str string) {
+func GenCipherTextAndKey(str string) (encrypted []byte, block cipher.Block, iv []byte) {
     
+    // convert the string input to byte array
+    // NEEDS TO BE CHANGED, SHOULD ACCEPT A BYTE ARRAY
     plaintext := []byte(str)
     
-    block, err := GenSymmetricKey()
+    // get the block required for encryption and decryption
+    block, err := GenCipherBlock()
     if err != nil {
         panic(err)
     }
+
+    // get the right block size for the plaintext
     ciphertext := make([]byte, aes.BlockSize+len(plaintext))
-    iv := ciphertext[:aes.BlockSize]
+    iv = ciphertext[:aes.BlockSize]
+
+    // read a random value for IV
     if _, err := io.ReadFull(rand.Reader, iv); err != nil {
         panic(err)
     }
 
     encrypter := cipher.NewCFBEncrypter(block, iv)
 
-    encrypted := make([]byte, len(str))
+    encrypted = make([]byte, len(str))
     encrypter.XORKeyStream(encrypted, plaintext)
 
-    fmt.Printf("%s encrypted to %v with iv of %v\n", str, encrypted, iv)
 
+    return
 
 }
 
