@@ -3,10 +3,14 @@ package main
 import (
 	"net"
 	"MDFS/utils"
+	//"fmt"
 )
 
 func main() {
-
+	
+	// encryption of a string
+	utils.GenCipherText("Hello World")
+	
 	// doesn't get configuration from file
 	// it will get it from metadata service
 	protocol := "tcp"
