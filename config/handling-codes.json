@@ -1,14 +1,18 @@
 {
 	"client": {
 
-		"1": "send",
-		"2": "request"
+		"1": "request",
+		"2": "send",
+		"3": "file available",
+		"4": "file unavailable"
 	},
 
 	"storagenode": {
 
-		"1": "receive",
-		"2": "send"
+		"1": "client request",
+		"2": "receive",
+		"3": "file available",
+		"4": "file unavailable"
 	},
 
 	"metadata": {

@@ -4,19 +4,21 @@ import (
 	"MDFS/config"
 	"MDFS/utils"
 	"bufio"
+	"encoding/hex"
 	"fmt"
+	"io"
 	"net"
 	"os"
 )
 
+// get configuration settings from config file
+// TODO relative vs abosolute file path
+// requires absolute fp when installed
+var conf = config.ParseConfiguration("../config/tcp-server-conf.json")
+
 func main() {
 
 	fmt.Println("Launching server...")
-
-	// get configuration settings from config file
-	// TODO relative vs abosolute file path
-	// requires absolute fp when installed
-	conf := config.ParseConfiguration("config/tcp-server-conf.json")
 
 	// listen on specified port
 	ln, err := net.Listen(conf.Protocol, conf.Port)
@@ -47,16 +49,62 @@ func main() {
 // checks request code and calls corresponding function
 func handleRequest(conn net.Conn) {
 
-	// create read buffer for tcp connection
+	// create read and write buffer for tcp connection
 	r := bufio.NewReader(conn)
+	w := bufio.NewWriter(conn)
 
 	// var code uint8
-	code, _ := r.ReadByte()
+	handlecode, _ := r.ReadByte()
 
-	switch code {
-	case 1:
-		output := "/path/to/files/output"
+	// should there be a confirmation sent from server to client?
+
+	switch handlecode {
+	case 1: // client is requesting a file
+		// make a buffer to hold hash
+		buf := make([]byte, 16)
+		_, err := r.Read(buf)
+		if err != nil && err != io.EOF {
+			panic(err)
+		}
+
+		hash := hex.EncodeToString(buf)
+		fmt.Println("Hash received: " + hash)
+
+		// check if file exists
+		var sendcode uint8
+		fp := conf.Path + hash
+		if _, err := os.Stat(fp); err == nil {
+			sendcode = 3                 // file available code
+			err := w.WriteByte(sendcode) // let client know
+			if err != nil {
+				panic(err)
+			}
+
+			// send the file
+			utils.SendFile(conn, w, fp)
+		} else {
+			sendcode = 4
+			err := w.WriteByte(sendcode) // let client know
+			if err != nil {
+				panic(err)
+			}
+		}
+
+		conn.Close()
+
+	case 2: // receive file from client
+		output := conf.Path + "output"
 		utils.ReceiveFile(conn, r, output)
+		hash, err := utils.ComputeMd5(output)
+		if err != nil {
+			panic(err)
+		}
+		checksum := hex.EncodeToString(hash)
+		fmt.Println("md5 checksum of file is: " + checksum)
+		os.Rename(output, conf.Path+checksum)
+
+		conn.Close()
+
 	default:
 		conn.Close()
 	}

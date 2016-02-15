@@ -2,9 +2,9 @@ package utils
 
 import (
 	"bufio"
-	"os"
-	"net"
 	"io"
+	"net"
+	"os"
 )
 
 func ReceiveFile(conn net.Conn, r *bufio.Reader, filepath string) {
@@ -26,7 +26,8 @@ func ReceiveFile(conn net.Conn, r *bufio.Reader, filepath string) {
 	w := bufio.NewWriter(fo)
 
 	// make a buffer to hold read chunks
-	buf := make([]byte, 1024)
+	// find a good length
+	buf := make([]byte, 16)
 
 	for {
 
@@ -48,7 +49,4 @@ func ReceiveFile(conn net.Conn, r *bufio.Reader, filepath string) {
 	if err = w.Flush(); err != nil {
 		panic(err)
 	}
-
-	// close the connection
-	conn.Close()
 }
