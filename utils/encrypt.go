@@ -5,7 +5,7 @@ import (
     "crypto/aes"
     "crypto/cipher"
     "crypto/rand"
-    "os"
+//    "os"
     "io"
     "fmt"
 )
@@ -14,17 +14,9 @@ func GenSymmetricKey() (block cipher.Block, err error)  {
 
     // create a byte array 32 bytes long
     data := make([]byte, 32)
-    file, err := os.Open("/dev/random")
-    if err != nil {
+    if _, err := io.ReadFull(rand.Reader, data); err != nil {
         panic(err)
     }
-    // read 32 bytes from /dev/random
-    count, err := file.ReadAt(data, 0)
-    if err != nil {
-        panic(err)
-    }
-    // checking the result
-    fmt.Printf("read %d bytes: %q\n", count, data[:count])
 
     // get a cipher block from the key
     block, err = aes.NewCipher(data)
