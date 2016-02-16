@@ -12,29 +12,13 @@ import (
     "encoding/binary"
 )
 
-func GenCipherBlockAndIV() (block cipher.Block, iv []byte, err error)  {
+func GenSymmetricKey() (key []byte, err error)  {
 
     // create a byte array 32 bytes long
-    data := make([]byte, 32)
-    if _, err := io.ReadFull(rand.Reader, data); err != nil {
+    key := make([]byte, 32)
+    if _, err := io.ReadFull(rand.Reader, key); err != nil {
         panic(err)
     }
-
-    // get a cipher block from the key
-    block, err = aes.NewCipher(data)
-    if err != nil {
-        panic(err)
-    }
-
-    // get the right block size for the plaintext
-    ciphertext := make([]byte, aes.BlockSize+len(data))
-    iv = ciphertext[:aes.BlockSize]
-    
-    // read a random value for IV
-    if _, err := io.ReadFull(rand.Reader, iv); err != nil {
-        panic(err)
-    }
-
     return
 }
 
