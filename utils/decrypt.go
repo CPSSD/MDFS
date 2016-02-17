@@ -4,9 +4,10 @@ import (
     "crypto/aes"
     "crypto/cipher"
     "io/ioutil"
+    "fmt"
 )
 
-func DecryptFile(iv []byte, key []byte, filepath string, destination string) (err error) {
+func DecryptFile(filepath string, destination string) (err error) {
 
     var ciphertext []byte
     var block cipher.Block
@@ -21,20 +22,17 @@ func DecryptFile(iv []byte, key []byte, filepath string, destination string) (er
     // leave the key unencrypted
 
     // get key
-    //key := ciphertext[:32]
+    key := ciphertext[:32]
 
     // get initialization vector
-/*    
+    
     iv := ciphertext[32:32+aes.BlockSize]
     if len(ciphertext) < aes.BlockSize {
         panic(err)
         return
     }
-*/
 
 
-    key = []byte("longer means more possible keys ")
-    iv = []byte("longer means mor")
 
 
     // create the cipher block from the key
@@ -43,8 +41,9 @@ func DecryptFile(iv []byte, key []byte, filepath string, destination string) (er
     }
     
     // remove the key and iv from the ciphertext
-//    ciphertext = ciphertext[32+aes.BlockSize:]
+    ciphertext = ciphertext[32+aes.BlockSize:]
 
+    fmt.Printf("Block is of size %d,\n iv = %v,\n key = %v\n", aes.BlockSize, iv, key)
 
     // init an encryption stream
     decrypter := cipher.NewCTR(block, iv)

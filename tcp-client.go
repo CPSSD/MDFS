@@ -15,15 +15,15 @@ func main() {
 	encryp := "/path/to/files/input.enc"
 	result := "/path/to/files/result.txt"
 
-	iv, key, _ := utils.EncryptFile(source, encryp)
-	utils.DecryptFile(iv, key, encryp, result)
+ 	utils.EncryptFile(source, encryp)
+	utils.DecryptFile(encryp, result)
 
 	source = "/path/to/files/image.jpg"
 	encryp = "/path/to/files/image.enc"
 	result = "/path/to/files/result.jpg"
 
-	iv, key, _ = utils.EncryptFile(source, encryp)
-	utils.DecryptFile(iv, key, encryp, result)
+	utils.EncryptFile(source, encryp)
+	utils.DecryptFile(encryp, result)
 	
     //fmt.Printf("%s encrypted to %v with iv of %v and block of %v\n", str, encrypted, iv, block)
 
