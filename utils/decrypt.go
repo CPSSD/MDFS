@@ -43,7 +43,7 @@ func DecryptFile(filepath string, destination string) (err error) {
     // remove the key and iv from the ciphertext
     ciphertext = ciphertext[32+aes.BlockSize:]
 
-    fmt.Printf("Block is of size %d,\n iv = %v,\n key = %v\n", aes.BlockSize, iv, key)
+    fmt.Printf("Block is of size %d,\n iv = %v,\n key = %v\n\n", aes.BlockSize, iv, key)
 
     // init an encryption stream
     decrypter := cipher.NewCTR(block, iv)

@@ -49,11 +49,6 @@ func EncryptFile(filepath string, destination string) (err error) {
         panic(err)
     }
 
-    iv = make([]byte, aes.BlockSize)
-    if _, err = io.ReadFull(rand.Reader, iv); err != nil {
-        panic(err)
-    }
-
     // create the cipher block from the key
     if block, err = aes.NewCipher(key); err != nil {
         panic(err)
