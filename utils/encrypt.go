@@ -2,7 +2,6 @@ package utils
 
 import (
 
-    "fmt"
     "crypto/aes"
     "crypto/cipher"
     "crypto/rand"
@@ -54,8 +53,6 @@ func EncryptFile(filepath string, destination string) (err error) {
         panic(err)
     }
     
-    fmt.Printf("Block is of size %d,\n iv = %v,\n key = %v\n", aes.BlockSize, iv, key)
-
     // init an encryption stream
     encrypter := cipher.NewCTR(block, iv)
 
