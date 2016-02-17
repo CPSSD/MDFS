@@ -28,6 +28,7 @@ func main() {
 	// connect to this socket
 	// there should probably be error checking here
 	conn, _ := net.Dial(protocol, socket)
+	defer conn.Close()
 
 	// create a read and write buffer for the tcp connection
 	r := bufio.NewReader(conn)
@@ -74,15 +75,11 @@ func main() {
 			utils.ReceiveFile(conn, r, output)
 		}
 
-		conn.Close()
-
 	case 2: // send file to server
 		fmt.Println("Sending: " + send)
 		utils.SendFile(conn, w, send)
-		conn.Close()
 
 	default:
 		fmt.Println("Unrecognised code")
-		conn.Close()
 	}
 }

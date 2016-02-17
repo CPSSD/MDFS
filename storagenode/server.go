@@ -14,7 +14,7 @@ import (
 // get configuration settings from config file
 // TODO relative vs abosolute file path
 // requires absolute fp when installed
-var conf = config.ParseConfiguration("../config/tcp-server-conf.json")
+var conf = config.ParseConfiguration("../config/serverconf.json")
 
 func main() {
 
@@ -48,6 +48,8 @@ func main() {
 
 // checks request code and calls corresponding function
 func handleRequest(conn net.Conn) {
+
+	defer conn.Close()
 
 	// create read and write buffer for tcp connection
 	r := bufio.NewReader(conn)
@@ -90,8 +92,6 @@ func handleRequest(conn net.Conn) {
 			}
 		}
 
-		conn.Close()
-
 	case 2: // receive file from client
 		output := conf.Path + "output"
 		utils.ReceiveFile(conn, r, output)
@@ -102,10 +102,5 @@ func handleRequest(conn net.Conn) {
 		checksum := hex.EncodeToString(hash)
 		fmt.Println("md5 checksum of file is: " + checksum)
 		os.Rename(output, conf.Path+checksum)
-
-		conn.Close()
-
-	default:
-		conn.Close()
 	}
 }
