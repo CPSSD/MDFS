@@ -12,11 +12,18 @@ func main() {
 	//str := "Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia Curae; In id pellentesque eros. Proin ut vulputate magna. Pellentesque elementum sem eu nibh finibus, id sodales orci efficitur. Donec viverra semper diam a tristique. Aliquam ut augue vestibulum, cursus erat nec, lacinia magna. Interdum et malesuada fames ac ante ipsum primis in faucibus. Sed neque nisl, rhoncus nec velit id, ornare mollis augue. Praesent imperdiet ut massa vitae varius."
 	//encrypted, block, iv := utils.GenCipherTextAndKey(str)
 	source := "/path/to/files/input.txt"
-	encryp := "/path/to/files/input.txt.enc"
+	encryp := "/path/to/files/input.enc"
 	result := "/path/to/files/result.txt"
 
-	utils.EncryptFile(source, encryp)
-	utils.DecryptFile(encryp, result)
+	iv, key, _ := utils.EncryptFile(source, encryp)
+	utils.DecryptFile(iv, key, encryp, result)
+
+	source = "/path/to/files/image.jpg"
+	encryp = "/path/to/files/image.enc"
+	result = "/path/to/files/result.jpg"
+
+	iv, key, _ = utils.EncryptFile(source, encryp)
+	utils.DecryptFile(iv, key, encryp, result)
 	
     //fmt.Printf("%s encrypted to %v with iv of %v and block of %v\n", str, encrypted, iv, block)
 
