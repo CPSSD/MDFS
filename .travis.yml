@@ -5,5 +5,5 @@ go: 1.5
 notifications:
   slack: mdfs:qbXCi4UykUI2w8vFBh4sw2X6
 
-before_script:
-- go get github.com/bmizerany/assert
+script:
+  - go test -v ./utils

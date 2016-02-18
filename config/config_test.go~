@@ -6,7 +6,7 @@ func Test(t *testing.T) {
 	var tests = []struct {
 		filename, protocol, port, path string
 	}{
-		{"../storagenode/serverconf.json", "tcp", ":8081", "/path/to/files/"},
+		{"tcp-server-conf.json", "tcp", ":8081", "/path/to/files/"},
 	}
 
 	for _, c := range tests {

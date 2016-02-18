@@ -1,79 +1,86 @@
 package utils
 
-import "testing"
+import (
+	"bytes"
+	"io"
+	"log"
+	"os"
+	"testing"
+)
 
+// needs to be fixed
 func TestEnc(t *testing.T) {
-    var tests = []struct {
-        equal bool
-    }{
-        {true}
-    }
-    for _, c := range tests {
-        got := CheckFiles()
-        if got.equal != true {
-            t.Error("Encryption and decryption process failed.")
-        }
-    }
+	var tests = []struct {
+		equal bool
+	}{
+		{true},
+	}
+	for _, c := range tests {
+		got := CheckFiles()
+		if got != c.equal {
+			t.Error("Encryption and decryption process failed.")
+		}
+	}
 }
 
 const chunkSize = 4000
 
 func CheckFiles() bool {
-    
-    //test two files for encryption and then decryption
-    source := "/path/to/files/input.txt"
-    encryp := "/path/to/files/input.enc"
-    result := "/path/to/files/result.txt"
 
-    EncryptFile(source, encryp)
-    DecryptFile(encryp, result)
+	//test two files for encryption and then decryption
+	source := "/path/to/files/test"
+	encryp := "/path/to/files/test.enc"
+	result := "/path/to/files/result.txt"
 
-    test1 := CompareFiles(source, result)
+	EncryptFile(source, encryp)
+	DecryptFile(encryp, result)
 
-    source = "/path/to/files/image.jpg"
-    encryp = "/path/to/files/image.enc"
-    result = "/path/to/files/result.jpg"
+	test1 := CompareFiles(source, result)
 
-    EncryptFile(source, encryp)
-    DecryptFile(encryp, result)
+	source = "/path/to/files/david.jpg"
+	encryp = "/path/to/files/david.enc"
+	result = "/path/to/files/result.jpg"
 
-    test2 := CompareFiles(source, result)
+	EncryptFile(source, encryp)
+	DecryptFile(encryp, result)
 
-    return test1 && test2
+	test2 := CompareFiles(source, result)
+
+	return test1 && test2
 }
 
 func CompareFiles(file1, file2 string) bool {
-    // Check file size ...
+	// Check file size ...
 
-    f1, err := os.Open(file1)
-    if err != nil {
-        log.Fatal(err)
-    }
+	f1, err := os.Open(file1)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    f2, err := os.Open(file2)
-    if err != nil {
-        log.Fatal(err)
-    }
+	f2, err := os.Open(file2)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    for {
-        b1 := make([]byte, chunkSize)
-        _, err1 := f1.Read(b1)
+	for {
+		b1 := make([]byte, chunkSize)
+		_, err1 := f1.Read(b1)
 
-        b2 := make([]byte, chunkSize)
-        _, err2 := f2.Read(b2)
+		b2 := make([]byte, chunkSize)
+		_, err2 := f2.Read(b2)
 
-        if err1 != nil || err2 != nil {
-            if err1 == io.EOF && err2 == io.EOF {
-                return true
-            } else if err1 == io.EOF || err2 == io.EOF {
-                return false
-            } else {
-                log.Fatal(err1, err2)
-            }
-        }
+		if err1 != nil || err2 != nil {
+			if err1 == io.EOF && err2 == io.EOF {
+				return true
+			} else if err1 == io.EOF || err2 == io.EOF {
+				return false
+			} else {
+				log.Fatal(err1, err2)
+			}
+		}
 
-        if !bytes.Equal(b1, b2) {
-            return false
-        }
-    }
+		if !bytes.Equal(b1, b2) {
+			return false
+		}
+	}
 }
