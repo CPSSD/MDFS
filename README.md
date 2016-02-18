@@ -1,4 +1,4 @@
-# MDFS
+# MDFS https://travis-ci.com/CPSSD/MDFS.svg?token=ZNLEp9wQPE3kma4CBH8m&branch=master
 Massively Distributed File System
 
 ## Usage
