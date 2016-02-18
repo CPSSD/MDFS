@@ -1,11 +1,11 @@
 package main
 
 import (
-	"MDFS/utils"
 	"bufio"
 	"encoding/hex"
 	"flag"
 	"fmt"
+	"github.com/CPSSD/MDFS/utils"
 	"net"
 )
 

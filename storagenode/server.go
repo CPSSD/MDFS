@@ -1,11 +1,11 @@
 package main
 
 import (
-	"MDFS/config"
-	"MDFS/utils"
 	"bufio"
 	"encoding/hex"
 	"fmt"
+	"github.com/CPSSD/MDFS/config"
+	"github.com/CPSSD/MDFS/utils"
 	"io"
 	"net"
 	"os"
@@ -57,8 +57,6 @@ func handleRequest(conn net.Conn) {
 
 	// var code uint8
 	handlecode, _ := r.ReadByte()
-
-	// should there be a confirmation sent from server to client?
 
 	switch handlecode {
 	case 1: // client is requesting a file
