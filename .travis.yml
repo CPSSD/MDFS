@@ -10,7 +10,7 @@ before_install:
   - chmod 600 .netrc
 
 before_script:
-  - git clone http://github.com/CPSSD/MDFS/
+  - go get github.com/CPSSD/MDFS/
   - cd $GOPATH/src/github.com/CPSSD/MDFS/utils
 
 script:
