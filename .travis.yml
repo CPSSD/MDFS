@@ -14,4 +14,4 @@ before_script:
   - cd $GOPATH/src/github.com/CPSSD/MDFS/utils
 
 script:
-  - go test -v
+  - go test

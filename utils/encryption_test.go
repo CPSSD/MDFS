@@ -9,7 +9,7 @@ import (
 )
 
 // needs to be fixed
-func TestEnc(t *testing.T) {
+func TestEncryption(t *testing.T) {
 	var tests = []struct {
 		equal bool
 	}{

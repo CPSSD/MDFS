@@ -2,7 +2,7 @@ package config
 
 import "testing"
 
-func Test(t *testing.T) {
+func TestConfig(t *testing.T) {
 	var tests = []struct {
 		filename, protocol, port, path string
 	}{

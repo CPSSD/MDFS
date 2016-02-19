@@ -2,7 +2,7 @@ package utils
 
 import "testing"
 
-func Test(t *testing.T) {
+func TestHash(t *testing.T) {
 	var tests = []struct {
 		path, filename string
 		want           bool
