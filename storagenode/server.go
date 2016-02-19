@@ -1,8 +1,8 @@
 package main
 
 import (
-	"MDFS/config"
-	"MDFS/utils"
+	"github.com/CPSSD/MDFS/config"
+	"github.com/CPSSD/MDFS/utils"
 	"bufio"
 	"encoding/hex"
 	"fmt"
