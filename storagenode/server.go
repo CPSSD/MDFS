@@ -1,11 +1,11 @@
 package main
 
 import (
-	"github.com/CPSSD/MDFS/config"
-	"github.com/CPSSD/MDFS/utils"
 	"bufio"
 	"encoding/hex"
 	"fmt"
+	"github.com/CPSSD/MDFS/config"
+	"github.com/CPSSD/MDFS/utils"
 	"io"
 	"net"
 	"os"
@@ -14,7 +14,7 @@ import (
 // get configuration settings from config file
 // TODO relative vs abosolute file path
 // requires absolute fp when installed
-var conf = config.ParseConfiguration("../config/tcp-server-conf.json")
+var conf = config.ParseConfiguration("../config/serverconf.json")
 
 func main() {
 
@@ -49,14 +49,14 @@ func main() {
 // checks request code and calls corresponding function
 func handleRequest(conn net.Conn) {
 
+	defer conn.Close()
+
 	// create read and write buffer for tcp connection
 	r := bufio.NewReader(conn)
 	w := bufio.NewWriter(conn)
 
 	// var code uint8
 	handlecode, _ := r.ReadByte()
-
-	// should there be a confirmation sent from server to client?
 
 	switch handlecode {
 	case 1: // client is requesting a file
@@ -90,8 +90,6 @@ func handleRequest(conn net.Conn) {
 			}
 		}
 
-		conn.Close()
-
 	case 2: // receive file from client
 		output := conf.Path + "output"
 		utils.ReceiveFile(conn, r, output)
@@ -102,10 +100,5 @@ func handleRequest(conn net.Conn) {
 		checksum := hex.EncodeToString(hash)
 		fmt.Println("md5 checksum of file is: " + checksum)
 		os.Rename(output, conf.Path+checksum)
-
-		conn.Close()
-
-	default:
-		conn.Close()
 	}
 }
