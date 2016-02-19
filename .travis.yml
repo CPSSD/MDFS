@@ -1,0 +1,17 @@
+language: go
+
+go: 1.5
+
+notifications:
+  slack: mdfs:qbXCi4UykUI2w8vFBh4sw2X6
+
+before_install:
+  - cp .netrc ~
+  - chmod 600 .netrc
+
+before_script:
+  - go get -d github.com/CPSSD/MDFS
+  - cd $GOPATH/src/github.com/CPSSD/MDFS/utils
+
+script:
+  - go test -v
