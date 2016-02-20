@@ -6,7 +6,49 @@ import (
 	"crypto/rand"
 	"io"
 	"io/ioutil"
+	"os"
+	"crypto/rsa"
+	"encoding/gob"
 )
+
+func GenUserKeys() bool {
+	// generate a user's public and private key
+	// should only be called if they do not exist already
+
+	if _, err := os.Stat("/path/to/files/.priv"); err == nil {
+  		// path/to/whatever exists
+		panic(err)
+	}
+	if _, err := os.Stat("/path/to/files/.pub"); err == nil {
+  		// path/to/whatever exists
+		panic(err)
+	}
+
+	// generate a new RSA key
+	if privatekey, err := rsa.GenerateKey(rand.Reader, 1024); err != nil {
+		panic(err)
+	}
+
+	var publickey *rsa.PublicKey
+	publickey = &privatekey.PublicKey
+
+	// output to files
+	if privatekeyout, err := os.Create("/path/to/files/.private_key_mdfs"); err != nil {
+		panic(err)
+	}
+	encoder := gob.NewEncoder(privatekeyout)
+	encoder.Encode(privatekey)
+	privatekeyout.Close()
+
+	if publickeyout, err := os.Create("/path/to/files/.public_key_mdfs"); err != nil {
+		panic(err)
+	}
+	encoder = gob.NewEncoder(publickeyout)
+	encoder.Encode(publickey)
+	publickeyout.Close()
+
+	return true
+}
 
 func GenSymmetricKey() (key []byte, err error) {
 
