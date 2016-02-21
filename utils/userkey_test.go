@@ -12,15 +12,9 @@ func TestKeyGen(t *testing.T) {
 		{true},
 	}
 	for _, c := range tests {
-		got, err := IsKeys()
+		got, err := GenUserKeys()
 		if got != c.equal {
 			t.Error(err)
 		}
 	}
-}
-
-func IsKeys() (bool, error) {
-
-	test1, err := GenUserKeys()
-	return test1, err
 }
