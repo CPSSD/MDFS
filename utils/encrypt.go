@@ -10,43 +10,53 @@ import (
 	"crypto/rsa"
 	"encoding/gob"
 	"errors"
+	"fmt"
 )
 
 var (
-	ErrPrivExists = errors.New("privatekey exists, but no publickey")
-	ErrPublExists = errors.New("publickey exists, but no privatekey")
-	ErrKeyPairExists = errors.New("both privatekey and publickey exist")
+	ErrNoPublKey = errors.New("Privatekey exists, but no publickey.")
+	ErrNoPrivKey = errors.New("Publickey exists, but no privatekey.")
+	ErrNoKeyPair = errors.New("No key-pair exists.")
+	ErrKeyPairExist = errors.New("A user key-pair already exists.")
 )
+
+func KeysExist() (success bool, err error) {
+	// return true if the keys exist locally
+	// return false if only one or no keys exist
+
+	if _, err := os.Stat("/path/to/files/.private_key_mdfs"); err == nil {
+
+  		// /path/to/files/.private_key_mdfs exists
+		if _, err := os.Stat("/path/to/files/.public_key_mdfs"); err == nil {
+
+			return true, ErrKeyPairExist
+		}
+		return false, ErrNoPublKey
+	}
+	if _, err := os.Stat("/path/to/files/.public_key_mdfs"); err == nil {
+  		// path/to/whatever exists
+		return false, ErrNoPrivKey
+	}
+
+	return false, ErrNoKeyPair
+}
 
 func GenUserKeys() (success bool, err error) {
 	// generate a user's public and private key
 	// should only be called if they do not exist already
-
-
-	if _, err := os.Stat("/path/to/files/.private_key_mdfs"); err == nil {
-  		
-  		// /path/to/files/.private_key_mdfs exists
-		if _, err := os.Stat("/path/to/files/.public_key_mdfs"); err == nil {
-
-			return false, ErrKeyPairExists
+	if success, err := KeysExist(); err != ErrNoKeyPair {
+		if err == ErrKeyPairExist {
+			fmt.Printf("NOTE: \tDid not generate new keys because:\n\t%v\n", err)
 		}
-		return false, ErrPrivExists
-	}
-	if _, err := os.Stat("/path/to/files/.public_key_mdfs"); err == nil {
-  		// path/to/whatever exists
-		return false, ErrPublExists
+		return success, err 
 	}
 
-	// generate a new RSA key
-	/*if privatekey, err := rsa.GenerateKey(rand.Reader, 1024); err != nil {
-		panic(err)
-	}*/
+	// if no keys exist, continue
 
 	privatekey, err := rsa.GenerateKey(rand.Reader, 1024)
 
    	if err != nil {
-   		return false, nil
-	   	panic(err)
+   		return false, err
 	}
 
 
@@ -56,8 +66,7 @@ func GenUserKeys() (success bool, err error) {
 	// output to files
 	privatekeyout, err := os.Create("/path/to/files/.private_key_mdfs")
 	if err != nil {
-		return false, nil
-		panic(err)
+		return false, err
 	}
 	encoder := gob.NewEncoder(privatekeyout)
 	encoder.Encode(privatekey)
@@ -65,14 +74,13 @@ func GenUserKeys() (success bool, err error) {
 
 	publickeyout, err := os.Create("/path/to/files/.public_key_mdfs")
 	if err != nil {
-		return false, nil
-		panic(err)
+		return false, err
 	}
 	encoder = gob.NewEncoder(publickeyout)
 	encoder.Encode(publickey)
 	publickeyout.Close()
 
-	return true, nil
+	return true, err
 }
 
 func GenSymmetricKey() (key []byte, err error) {
