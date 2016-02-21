@@ -102,8 +102,8 @@ func EncryptFile(filepath string, destination string) (err error) {
 		panic(err)
 	}
 
-	ciphertext := make([]byte, 32+aes.BlockSize+len(string(plaintext)))
-	//ciphertext := make([]byte, len(string(plaintext)))
+	//ciphertext := make([]byte, 32+aes.BlockSize+len(string(plaintext)))
+	ciphertext := make([]byte, 44)
 
 	// PREPEND of user tokens will happen here, for now we will just
 	// leave the key unencrypted
@@ -113,12 +113,7 @@ func EncryptFile(filepath string, destination string) (err error) {
 	if _, err = io.ReadFull(rand.Reader, key); err != nil {
 		panic(err)
 	}
-
-	// create initialization vector
-	iv := ciphertext[32 : 32+aes.BlockSize]
-	if _, err = io.ReadFull(rand.Reader, iv); err != nil {
-		panic(err)
-	}
+	fmt.Printf("\n\nThe key write is: %v \n\n", key)
 
 	// create the cipher block from the key
 	if block, err = aes.NewCipher(key); err != nil {
@@ -126,10 +121,29 @@ func EncryptFile(filepath string, destination string) (err error) {
 	}
 
 	// init an encryption stream
-	encrypter := cipher.NewCTR(block, iv)
+	//encrypter := cipher.NewCTR(block, iv)
+	encrypter, err := cipher.NewGCM(block)
 
-	encrypter.XORKeyStream(ciphertext[32+aes.BlockSize:], plaintext)
+/*
+	// create initialization vector
+	iv := ciphertext[32 : 32+aes.BlockSize]
+	if _, err = io.ReadFull(rand.Reader, iv); err != nil {
+		panic(err)
+	}
+*/
+	// create a nonce
+	nonce := ciphertext[32 : 32+encrypter.NonceSize()]
+	if _, err = io.ReadFull(rand.Reader, nonce); err != nil {
+		panic(err)
+	}
+    fmt.Printf("\n\nThe nonce write is: %v \n\n", nonce)
+
+
+
+	//encrypter.XORKeyStream(ciphertext[32+aes.BlockSize:], plaintext)
 	//encrypter.XORKeyStream(ciphertext, plaintext)
+	// Seal appends to the first arg
+	ciphertext = encrypter.Seal(ciphertext, nonce, plaintext, nil)
 
 	ioutil.WriteFile(destination, ciphertext, 0777)
 
