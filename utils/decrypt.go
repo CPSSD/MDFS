@@ -1,65 +1,45 @@
 package utils
 
 import (
-    "crypto/aes"
-    "crypto/cipher"
-    "io/ioutil"
-    "fmt"
+	"crypto/aes"
+	"crypto/cipher"
+	"io/ioutil"
 )
 
 func DecryptFile(filepath string, destination string) (err error) {
 
-    var ciphertext []byte
-    var block cipher.Block
+	var ciphertext []byte
+	var block cipher.Block
 
-    if ciphertext, err = ioutil.ReadFile(filepath); err != nil {
-        panic(err)
-    }
+	if ciphertext, err = ioutil.ReadFile(filepath); err != nil {
+		panic(err)
+	}
 
-    //plaintext := make([]byte, 32+aes.BlockSize+len(string(ciphertext)))
+	// REMOVAL of user tokens will happen here, for now we will just
+	// assume the key is unencrypted
 
-    // PREPEND of user tokens will happen here, for now we will just
-    // leave the key unencrypted
+	// Get key from the ciphertext
+	key := ciphertext[:32]
 
-    // get key
-    key := ciphertext[:32]
-    fmt.Printf("\n\nThe key read is: %v \n\n", key)
+	// Create the cipher block from the key
+	if block, err = aes.NewCipher(key); err != nil {
+		panic(err)
+	}
 
-    // create the cipher block from the key
-    if block, err = aes.NewCipher(key); err != nil {
-        panic(err)
-    }
+	// Init a GCM decrypter
+	decrypter, err := cipher.NewGCM(block)
 
-    // init a decryption stream
-    // decrypter := cipher.NewCTR(block, iv)
-    decrypter, err := cipher.NewGCM(block)
-/*
-    // get initialization vector
-    
-    iv := ciphertext[32:32+aes.BlockSize]
-    if len(ciphertext) < aes.BlockSize {
-        panic(err)
-        return
-    }
-*/
-    // get the nonce from the ciphertext
-    nonce := ciphertext[32:32+decrypter.NonceSize()]
-    fmt.Printf("\n\nThe nonce read is: %v \n\n", nonce)
+	// Get the nonce from the ciphertext
+	nonce := ciphertext[32 : 32+decrypter.NonceSize()]
 
-    // remove the key and iv from the ciphertext
-    // // // // ciphertext = ciphertext[32+decrypter.NonceSize():]
+	// Decrypt and authenticate the message to plaintext
+	plaintext, err := decrypter.Open(nil, nonce, ciphertext[32+decrypter.NonceSize():], nil)
+	if err != nil {
+		panic(err)
+	}
 
+	// Write plaintext to destination
+	ioutil.WriteFile(destination, plaintext, 0777)
 
-    // decryption can be done in place
-    // decrypter.XORKeyStream(ciphertext, ciphertext)
-
-    // for clarity's sake
-    plaintext, err := decrypter.Open(nil, nonce, ciphertext[32+decrypter.NonceSize():], nil)
-    if err != nil {
-        panic(err)
-    }
-
-    ioutil.WriteFile(destination, plaintext, 0777)
-
-    return
+	return
 }

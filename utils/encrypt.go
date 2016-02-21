@@ -4,19 +4,19 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
-	"io"
-	"io/ioutil"
-	"os"
 	"crypto/rsa"
 	"encoding/gob"
 	"errors"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"os"
 )
 
 var (
-	ErrNoPublKey = errors.New("Privatekey exists, but no publickey.")
-	ErrNoPrivKey = errors.New("Publickey exists, but no privatekey.")
-	ErrNoKeyPair = errors.New("No key-pair exists.")
+	ErrNoPublKey    = errors.New("Privatekey exists, but no publickey.")
+	ErrNoPrivKey    = errors.New("Publickey exists, but no privatekey.")
+	ErrNoKeyPair    = errors.New("No key-pair exists.")
 	ErrKeyPairExist = errors.New("A user key-pair already exists.")
 )
 
@@ -26,7 +26,7 @@ func KeysExist() (success bool, err error) {
 
 	if _, err := os.Stat("/path/to/files/.private_key_mdfs"); err == nil {
 
-  		// /path/to/files/.private_key_mdfs exists
+		// /path/to/files/.private_key_mdfs exists
 		if _, err := os.Stat("/path/to/files/.public_key_mdfs"); err == nil {
 
 			return true, ErrKeyPairExist
@@ -34,7 +34,7 @@ func KeysExist() (success bool, err error) {
 		return false, ErrNoPublKey
 	}
 	if _, err := os.Stat("/path/to/files/.public_key_mdfs"); err == nil {
-  		// path/to/whatever exists
+		// path/to/whatever exists
 		return false, ErrNoPrivKey
 	}
 
@@ -42,23 +42,22 @@ func KeysExist() (success bool, err error) {
 }
 
 func GenUserKeys() (success bool, err error) {
-	// generate a user's public and private key
-	// should only be called if they do not exist already
+	// Generate a user's public and private key.
+	// This should only be called if they do not exist already.
 	if success, err := KeysExist(); err != ErrNoKeyPair {
 		if err == ErrKeyPairExist {
 			fmt.Printf("NOTE: \tDid not generate new keys because:\n\t%v\n", err)
 		}
-		return success, err 
+		return success, err
 	}
 
 	// if no keys exist, continue
 
 	privatekey, err := rsa.GenerateKey(rand.Reader, 1024)
 
-   	if err != nil {
-   		return false, err
+	if err != nil {
+		return false, err
 	}
-
 
 	var publickey *rsa.PublicKey
 	publickey = &privatekey.PublicKey
@@ -102,49 +101,35 @@ func EncryptFile(filepath string, destination string) (err error) {
 		panic(err)
 	}
 
-	//ciphertext := make([]byte, 32+aes.BlockSize+len(string(plaintext)))
+	// 44 = 32 byte key for aes + 12 bytes for the nonce
 	ciphertext := make([]byte, 44)
-
 	// PREPEND of user tokens will happen here, for now we will just
 	// leave the key unencrypted
 
-	// create key
+	// create AES-256 key
 	key := ciphertext[:32]
 	if _, err = io.ReadFull(rand.Reader, key); err != nil {
 		panic(err)
 	}
-	fmt.Printf("\n\nThe key write is: %v \n\n", key)
 
 	// create the cipher block from the key
 	if block, err = aes.NewCipher(key); err != nil {
 		panic(err)
 	}
 
-	// init an encryption stream
-	//encrypter := cipher.NewCTR(block, iv)
+	// init a GCM encrypter
 	encrypter, err := cipher.NewGCM(block)
 
-/*
-	// create initialization vector
-	iv := ciphertext[32 : 32+aes.BlockSize]
-	if _, err = io.ReadFull(rand.Reader, iv); err != nil {
-		panic(err)
-	}
-*/
 	// create a nonce
 	nonce := ciphertext[32 : 32+encrypter.NonceSize()]
 	if _, err = io.ReadFull(rand.Reader, nonce); err != nil {
 		panic(err)
 	}
-    fmt.Printf("\n\nThe nonce write is: %v \n\n", nonce)
 
-
-
-	//encrypter.XORKeyStream(ciphertext[32+aes.BlockSize:], plaintext)
-	//encrypter.XORKeyStream(ciphertext, plaintext)
-	// Seal appends to the first arg
+	// Seal appends the encrypted authenticated message to ciphertext
 	ciphertext = encrypter.Seal(ciphertext, nonce, plaintext, nil)
 
+	// Write encrypted data to file
 	ioutil.WriteFile(destination, ciphertext, 0777)
 
 	return
