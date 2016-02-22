@@ -5,6 +5,7 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha256"
 	"encoding/gob"
 	"errors"
 	"fmt"
@@ -135,8 +136,15 @@ func EncryptFile(filepath string, destination string) (err error) {
 	return
 }
 
-func CreateUserToken(block cipher.Block, iv []byte, privKey []string) {
+func CreateUserToken(uid []byte, publickey *rsa.PublicKey, symkey []byte) (token []byte, err error) {
+	hash := sha256.New()
+	encrypted, err := rsa.EncryptOAEP(hash, rand.Reader, publickey, symkey, uid)
+	if err != nil {
+		return nil, err
+	}
+	token = append(uid, encrypted...)
 
+	return
 }
 
 func ProtectFile(filepath string) {
