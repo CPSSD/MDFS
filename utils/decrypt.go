@@ -46,3 +46,8 @@ func DecryptFile(filepath string, destination string) (err error) {
 
 	return
 }
+
+func ExtractToken(user User, tokens []byte) (token []byte, err error) {
+
+	return
+}

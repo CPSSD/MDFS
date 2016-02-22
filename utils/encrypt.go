@@ -20,6 +20,8 @@ var (
 	ErrNoPrivKey    = errors.New("Publickey exists, but no privatekey.")
 	ErrNoKeyPair    = errors.New("No key-pair exists.")
 	ErrKeyPairExist = errors.New("A user key-pair already exists.")
+
+	ErrInvalidArgs	= errors.New("Invalid arguments to function.")
 )
 
 func KeysExist() (success bool, err error) {
@@ -168,16 +170,28 @@ func EncryptFile(filepath string, destination string) (err error) {
 }
 
 type User struct {
-	uuid []byte
-	pubkey rsa.PublicKey
+	Uuid []byte
+	Pubkey *rsa.PublicKey
+	Privkey *rsa.PrivateKey
 }
 
-func PrepTokens(symkey []byte, users []byte) (tokens []byte, err error) {
+func PrepTokens(symkey []byte, users ...User) (tokens []byte, err error) {
 
-	return
+	if users == nil || symkey == nil {
+		return nil, ErrInvalidArgs
+	}
+	for i := 0; i < len(users); i++ {
+		token, err := CreateUserToken(users[i].Uuid, users[i].Pubkey, symkey)
+		if err != nil{
+			return nil, err
+		}
+		tokens = append(tokens, token...)
+	}
+
+	return 
 }
 
-func CreateUserToken(uid []byte, publickey *rsa.PublicKey, symkey []byte) (token []byte, err error) {
+func CreateUserToken(uuid []byte, publickey *rsa.PublicKey, symkey []byte) (token []byte, err error) {
 
 	// Get a new sha256 hash for randomness
 	hash := sha256.New()
