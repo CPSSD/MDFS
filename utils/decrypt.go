@@ -11,6 +11,7 @@ func DecryptFile(filepath string, destination string) (err error) {
 	var ciphertext []byte
 	var block cipher.Block
 
+	// Open the ciphertext to read
 	if ciphertext, err = ioutil.ReadFile(filepath); err != nil {
 		panic(err)
 	}
@@ -21,24 +22,26 @@ func DecryptFile(filepath string, destination string) (err error) {
 	// Get key from the ciphertext
 	key := ciphertext[:32]
 
-	// Create the cipher block from the key
+	// Create the AES cipher block from the key
 	if block, err = aes.NewCipher(key); err != nil {
 		panic(err)
 	}
 
-	// Init a GCM decrypter
+	// Init a GCM decrypter from the AES cipher
 	decrypter, err := cipher.NewGCM(block)
 
 	// Get the nonce from the ciphertext
 	nonce := ciphertext[32 : 32+decrypter.NonceSize()]
 
-	// Decrypt and authenticate the message to plaintext
+	// Decrypt and authenticate the message to plaintext.
+	// First nil arg is the destination, however the plaintext is
+	// returned so we will store it in a byte array
 	plaintext, err := decrypter.Open(nil, nonce, ciphertext[32+decrypter.NonceSize():], nil)
 	if err != nil {
 		panic(err)
 	}
 
-	// Write plaintext to destination
+	// Write plaintext to destination file with permissions 0777
 	ioutil.WriteFile(destination, plaintext, 0777)
 
 	return
