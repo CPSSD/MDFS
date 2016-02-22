@@ -136,12 +136,23 @@ func EncryptFile(filepath string, destination string) (err error) {
 	return
 }
 
+type User struct {
+	uuid []byte
+	pubkey rsa.PublicKey
+}
+
+func PrepTokens(symkey []byte, users []byte) (tokens []byte, err error) {
+
+	return
+}
+
 func CreateUserToken(uid []byte, publickey *rsa.PublicKey, symkey []byte) (token []byte, err error) {
 	hash := sha256.New()
 	encrypted, err := rsa.EncryptOAEP(hash, rand.Reader, publickey, symkey, uid)
 	if err != nil {
 		return nil, err
 	}
+	fmt.Printf("len of uid is %d, len of encrypted is %d, len of key was %d", len(uid), len(encrypted), len(symkey))
 	token = append(uid, encrypted...)
 
 	return
