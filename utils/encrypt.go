@@ -141,6 +141,7 @@ func EncryptFile(filepath string, destination string, users ...User) (err error)
 		return err
 	}
 
+	// Write 8 bytes for the size of the tokens
 	tokens_size := make([]byte, 8)
 	_ = binary.PutUvarint(tokens_size, uint64(len(tokens)))
 

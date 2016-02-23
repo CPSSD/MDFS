@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/rsa"
 	"encoding/gob"
-	//"fmt"
 	"io"
 	"log"
 	"os"
@@ -59,24 +58,36 @@ func CheckFiles() bool {
 
 	user1 := User{Uuid: 1, Pubkey: puk, Privkey: prk}
 
-	EncryptFile(source, encryp, user1)
-	DecryptFile(encryp, result, user1)
+	err = EncryptFile(source, encryp, user1)
+	if err != nil {
+		return false
+	}
+	err = DecryptFile(encryp, result, user1)
+	if err != nil {
+		return false
+	}
 
-	test1 := CompareFiles(source, result)
+	test1 := compareFiles(source, result)
 
 	source = "/path/to/files/david.jpg"
 	encryp = "/path/to/files/david.enc"
 	result = "/path/to/files/result.jpg"
 
-	EncryptFile(source, encryp, user1)
-	DecryptFile(encryp, result, user1)
-
-	test2 := CompareFiles(source, result)
+	err = EncryptFile(source, encryp, user1)
+	if err != nil {
+		return false
+	}
+	err = DecryptFile(encryp, result, user1)
+	if err != nil {
+		return false
+	}
+	
+	test2 := compareFiles(source, result)
 
 	return test1 && test2
 }
 
-func CompareFiles(file1, file2 string) bool {
+func compareFiles(file1, file2 string) bool {
 	// Check file size ...
 
 	f1, err := os.Open(file1)
