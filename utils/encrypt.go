@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/gob"
 	"errors"
 	"fmt"
@@ -21,7 +22,7 @@ var (
 	ErrNoKeyPair    = errors.New("No key-pair exists.")
 	ErrKeyPairExist = errors.New("A user key-pair already exists.")
 
-	ErrInvalidArgs	= errors.New("Invalid arguments to function.")
+	ErrInvalidArgs = errors.New("Invalid arguments to function.")
 )
 
 func KeysExist() (success bool, err error) {
@@ -53,7 +54,7 @@ func KeysExist() (success bool, err error) {
 func GenUserKeys() (success bool, err error) {
 
 	// Generate a user's public and private key.
-	
+
 	// Make sure they do not exist already.
 	if success, err := KeysExist(); err != ErrNoKeyPair {
 		if err == ErrKeyPairExist {
@@ -116,10 +117,10 @@ func EncryptFile(filepath string, destination string) (err error) {
 
 	// Current structure of the final ciphertext:
 	// [ symmetric key (32B) | nonce (12B) | ciphertext (variable length) ]
-	
+
 	// Intended structure of the final ciphertext:
 	// [ num of user tokens (8B) | ... user token(s) ... | nonce (12B) | ciphertext (variable length) ]
-	
+
 	var plaintext []byte
 	var block cipher.Block
 
@@ -151,7 +152,7 @@ func EncryptFile(filepath string, destination string) (err error) {
 	// Init a GCM (Galois/Counter Mode) encrypter from the AES cipher.
 	encrypter, err := cipher.NewGCM(block)
 
-	// Create a nonce (random data used in the encryption process). 
+	// Create a nonce (random data used in the encryption process).
 	// The nonce used in encryption must be the same used in the
 	// decryption process. Store it in ciphertext[32:32+12]
 	nonce := ciphertext[32 : 32+encrypter.NonceSize()]
@@ -170,8 +171,8 @@ func EncryptFile(filepath string, destination string) (err error) {
 }
 
 type User struct {
-	Uuid []byte
-	Pubkey *rsa.PublicKey
+	Uuid    uint64
+	Pubkey  *rsa.PublicKey
 	Privkey *rsa.PrivateKey
 }
 
@@ -180,15 +181,25 @@ func PrepTokens(symkey []byte, users ...User) (tokens []byte, err error) {
 	if users == nil || symkey == nil {
 		return nil, ErrInvalidArgs
 	}
+
+	// Loop through all of the users that are entered in args
 	for i := 0; i < len(users); i++ {
-		token, err := CreateUserToken(users[i].Uuid, users[i].Pubkey, symkey)
-		if err != nil{
+
+		// Convert the uuid to a byte array 8B or 64b long
+		buf := make([]byte, 8)
+		_ = binary.PutUvarint(buf, users[i].Uuid)
+
+		// Create a single token
+		token, err := CreateUserToken(buf, users[i].Pubkey, symkey)
+		if err != nil {
 			return nil, err
 		}
+
+		// Append the token to the list of tokens
 		tokens = append(tokens, token...)
 	}
 
-	return 
+	return
 }
 
 func CreateUserToken(uuid []byte, publickey *rsa.PublicKey, symkey []byte) (token []byte, err error) {
@@ -199,12 +210,12 @@ func CreateUserToken(uuid []byte, publickey *rsa.PublicKey, symkey []byte) (toke
 	// Pass in hash function, random reader for entropy, user's public key,
 	// the symkey (or data) to be encrypted, and the unique user id as a
 	// label used in verification
-	encrypted, err := rsa.EncryptOAEP(hash, rand.Reader, publickey, symkey, uid)
+	encrypted, err := rsa.EncryptOAEP(hash, rand.Reader, publickey, symkey, uuid)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("len of uid is %d, len of encrypted is %d, len of key was %d", len(uid), len(encrypted), len(symkey))
-	token = append(uid, encrypted...)
+	fmt.Printf("len of uid is %d, len of encrypted is %d, len of key was %d", len(uuid), len(encrypted), len(symkey))
+	token = append(uuid, encrypted...)
 
 	return
 }
