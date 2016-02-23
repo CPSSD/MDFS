@@ -17,12 +17,14 @@ import (
 
 var (
 	// Custom error messages
-	ErrNoPublKey    = errors.New("Privatekey exists, but no publickey.")
-	ErrNoPrivKey    = errors.New("Publickey exists, but no privatekey.")
-	ErrNoKeyPair    = errors.New("No key-pair exists.")
-	ErrKeyPairExist = errors.New("A user key-pair already exists.")
+	ErrNoPublKey    = errors.New("Privatekey exists, but no publickey\n")
+	ErrNoPrivKey    = errors.New("Publickey exists, but no privatekey\n")
+	ErrNoKeyPair    = errors.New("No key-pair exists\n")
+	ErrKeyPairExist = errors.New("A user key-pair already exists\n")
 
-	ErrInvalidArgs = errors.New("Invalid arguments to function.")
+	ErrInvalidArgs	= errors.New("Invalid arguments to function\n")
+
+	ErrEncryption	= errors.New("Error in encryption\n")
 )
 
 func KeysExist() (success bool, err error) {
@@ -93,6 +95,7 @@ func GenUserKeys() (success bool, err error) {
 	if err != nil {
 		return false, err
 	}
+
 	encoder = gob.NewEncoder(publickeyout)
 	encoder.Encode(publickey)
 	publickeyout.Close()
@@ -100,7 +103,7 @@ func GenUserKeys() (success bool, err error) {
 	return true, err
 }
 
-func GenSymmetricKey() (key []byte, err error) {
+func genSymmetricKey() (key []byte, err error) {
 
 	// Not currently used
 	// Create a byte array 32 bytes long
@@ -116,9 +119,6 @@ func GenSymmetricKey() (key []byte, err error) {
 func EncryptFile(filepath string, destination string, users ...User) (err error) {
 
 	// Current structure of the final ciphertext:
-	// [ symmetric key (32B) | nonce (12B) | ciphertext (variable length) ]
-
-	// Intended structure of the final ciphertext:
 	// [ num of user tokens (8B) | ... user token(s) ... | nonce (12B) | ciphertext (variable length) ]
 
 	var plaintext []byte
@@ -126,26 +126,19 @@ func EncryptFile(filepath string, destination string, users ...User) (err error)
 
 	// Open the file to be encrypted (the plaintext)
 	if plaintext, err = ioutil.ReadFile(filepath); err != nil {
-		panic(err)
+		return err
 	}
-
-	// Begin the ciphertext here. Only data for creating an encrypter
-	// or decrypter will be stored here for the minute, along with the
-	// user tokens. The actual encrypted data will be appended later.
-	// 44 bytes = 32 bytes for aes key + 12 bytes for the nonce.
-	//	ciphertext := make([]byte, 44)
-	// PREPEND of user tokens will happen here, for now we will just
-	// leave the key unencrypted
 
 	// Generate a symmetric AES-256 key
-	symkey, err := GenSymmetricKey()
+	symkey, err := genSymmetricKey()
 	if err != nil {
-		panic(err)
+		return err
 	}
 
-	tokens, err := PrepTokens(symkey, users...)
+	// Generate token(s) for the key
+	tokens, err := prepTokens(symkey, users...)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	tokens_size := make([]byte, 8)
@@ -153,28 +146,23 @@ func EncryptFile(filepath string, destination string, users ...User) (err error)
 
 	ciphertext := append(tokens_size, tokens...)
 
-	/*
-		// Create AES-256 key using cryptographically secure random data
-		// and store in ciphertext[0:32]
-		key := ciphertext[:32]
-		if _, err = io.ReadFull(rand.Reader, key); err != nil {
-			panic(err)
-		}
-	*/
 	// Create the AES cipher block from the key
 	if block, err = aes.NewCipher(symkey); err != nil {
-		panic(err)
+		return err
 	}
 
 	// Init a GCM (Galois/Counter Mode) encrypter from the AES cipher.
 	encrypter, err := cipher.NewGCM(block)
+	if err != nil {
+		return err
+	}
 
 	// Create a nonce (random data used in the encryption process).
 	// The nonce used in encryption must be the same used in the
 	// decryption process. Append it to ciphertext
 	nonce := make([]byte, encrypter.NonceSize())
 	if _, err = io.ReadFull(rand.Reader, nonce); err != nil {
-		panic(err)
+		return err
 	}
 	ciphertext = append(ciphertext, nonce...)
 
@@ -185,7 +173,7 @@ func EncryptFile(filepath string, destination string, users ...User) (err error)
 	// Write ciphertext to destination with permissions 0777
 	ioutil.WriteFile(destination, ciphertext, 0777)
 
-	return
+	return nil
 }
 
 type User struct {
@@ -194,7 +182,7 @@ type User struct {
 	Privkey *rsa.PrivateKey
 }
 
-func PrepTokens(symkey []byte, users ...User) (tokens []byte, err error) {
+func prepTokens(symkey []byte, users ...User) (tokens []byte, err error) {
 
 	if users == nil || symkey == nil {
 		return nil, ErrInvalidArgs
@@ -208,7 +196,7 @@ func PrepTokens(symkey []byte, users ...User) (tokens []byte, err error) {
 		_ = binary.PutUvarint(buf, users[i].Uuid)
 
 		// Create a single token
-		token, err := CreateUserToken(buf, users[i].Pubkey, symkey)
+		token, err := createUserToken(buf, users[i].Pubkey, symkey)
 		if err != nil {
 			return nil, err
 		}
@@ -220,7 +208,7 @@ func PrepTokens(symkey []byte, users ...User) (tokens []byte, err error) {
 	return
 }
 
-func CreateUserToken(uuid []byte, publickey *rsa.PublicKey, symkey []byte) (token []byte, err error) {
+func createUserToken(uuid []byte, publickey *rsa.PublicKey, symkey []byte) (token []byte, err error) {
 
 	// Get a new sha256 hash for randomness
 	hash := sha256.New()
@@ -235,8 +223,4 @@ func CreateUserToken(uuid []byte, publickey *rsa.PublicKey, symkey []byte) (toke
 	token = append(uuid, encrypted...)
 
 	return
-}
-
-func ProtectFile(filepath string) {
-
 }

@@ -13,7 +13,8 @@ import (
 )
 
 var (
-	ErrDecryption = errors.New("Error in decryption")
+	ErrDecryption	= errors.New("Error in decryption\n")
+	ErrNoToken		= errors.New("No token matching your uuid\n")
 )
 
 func DecryptFile(filepath string, destination string, user User) (err error) {
@@ -23,19 +24,14 @@ func DecryptFile(filepath string, destination string, user User) (err error) {
 
 	// Open the ciphertext to read
 	if ciphertext, err = ioutil.ReadFile(filepath); err != nil {
-		panic(err)
+		return err
 	}
 
-	// REMOVAL of user tokens will happen here, for now we will just
-	// assume the key is unencrypted
-
-	// Get key from the ciphertext
-	//key := ciphertext[:32]
-	buf := ciphertext[:8]
-	tokens_size, n := binary.Uvarint(buf)
-
+	// Find out the size of the set of tokens
+	bufTsize := ciphertext[:8]
+	tokens_size, n := binary.Uvarint(bufTsize)
 	if n <= 0 {
-		panic(ErrDecryption)
+		return ErrDecryption
 	}
 
 	tokens := ciphertext[8 : 8+int(tokens_size)]
@@ -44,18 +40,22 @@ func DecryptFile(filepath string, destination string, user User) (err error) {
 	bufuuid := make([]byte, 8)
 	_ = binary.PutUvarint(bufuuid, user.Uuid)
 
-	symkey, err := ExtractKeyFromToken(bufuuid, user.Privkey, tokens)
+	// Extract the symmetric key from the set of tokens for this user
+	symkey, err := extractKeyFromToken(bufuuid, user.Privkey, tokens)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	// Create the AES cipher block from the key
 	if block, err = aes.NewCipher(symkey); err != nil {
-		panic(err)
+		return err
 	}
 
 	// Init a GCM decrypter from the AES cipher
 	decrypter, err := cipher.NewGCM(block)
+	if err != nil {
+		return err
+	}
 
 	// Get the nonce from the ciphertext
 	nonce := ciphertext[8+int(tokens_size) : 8+int(tokens_size)+decrypter.NonceSize()]
@@ -65,27 +65,27 @@ func DecryptFile(filepath string, destination string, user User) (err error) {
 	// returned so we will store it in a byte array
 	plaintext, err := decrypter.Open(nil, nonce, ciphertext[8+int(tokens_size)+decrypter.NonceSize():], nil)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	// Write plaintext to destination file with permissions 0777
 	ioutil.WriteFile(destination, plaintext, 0777)
 
-	return
+	return nil
 }
 
-func ExtractKeyFromToken(uuid []byte, privatekey *rsa.PrivateKey, tokens []byte) (symkey []byte, err error) {
+func extractKeyFromToken(uuid []byte, privatekey *rsa.PrivateKey, tokens []byte) (symkey []byte, err error) {
 
 	for i := 0; i < (len(tokens)); i += 136 {
 		token := tokens[i : i+136]
 
 		if bytes.Equal(token[:8], uuid) {
-			hash := sha256.New()
 
+			hash := sha256.New()
 			symkey, err = rsa.DecryptOAEP(hash, rand.Reader, privatekey, token[8:], uuid)
 			return
 		}
 
 	}
-	return nil, ErrDecryption
+	return nil, ErrNoToken
 }
