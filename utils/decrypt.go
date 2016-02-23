@@ -1,12 +1,22 @@
 package utils
 
 import (
+	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/sha256"
+	"encoding/binary"
+	"errors"
 	"io/ioutil"
 )
 
-func DecryptFile(filepath string, destination string) (err error) {
+var (
+	ErrDecryption = errors.New("Error in decryption")
+)
+
+func DecryptFile(filepath string, destination string, user User) (err error) {
 
 	var ciphertext []byte
 	var block cipher.Block
@@ -20,10 +30,27 @@ func DecryptFile(filepath string, destination string) (err error) {
 	// assume the key is unencrypted
 
 	// Get key from the ciphertext
-	key := ciphertext[:32]
+	//key := ciphertext[:32]
+	buf := ciphertext[:8]
+	tokens_size, n := binary.Uvarint(buf)
+
+	if n <= 0 {
+		panic(ErrDecryption)
+	}
+
+	tokens := ciphertext[8 : 8+int(tokens_size)]
+
+	// Convert the uuid to a byte array 8B or 64b long
+	bufuuid := make([]byte, 8)
+	_ = binary.PutUvarint(bufuuid, user.Uuid)
+
+	symkey, err := ExtractKeyFromToken(bufuuid, user.Privkey, tokens)
+	if err != nil {
+		panic(err)
+	}
 
 	// Create the AES cipher block from the key
-	if block, err = aes.NewCipher(key); err != nil {
+	if block, err = aes.NewCipher(symkey); err != nil {
 		panic(err)
 	}
 
@@ -31,12 +58,12 @@ func DecryptFile(filepath string, destination string) (err error) {
 	decrypter, err := cipher.NewGCM(block)
 
 	// Get the nonce from the ciphertext
-	nonce := ciphertext[32 : 32+decrypter.NonceSize()]
+	nonce := ciphertext[8+int(tokens_size) : 8+int(tokens_size)+decrypter.NonceSize()]
 
 	// Decrypt and authenticate the message to plaintext.
 	// First nil arg is the destination, however the plaintext is
 	// returned so we will store it in a byte array
-	plaintext, err := decrypter.Open(nil, nonce, ciphertext[32+decrypter.NonceSize():], nil)
+	plaintext, err := decrypter.Open(nil, nonce, ciphertext[8+int(tokens_size)+decrypter.NonceSize():], nil)
 	if err != nil {
 		panic(err)
 	}
@@ -47,7 +74,18 @@ func DecryptFile(filepath string, destination string) (err error) {
 	return
 }
 
-func ExtractToken(user User, tokens []byte) (token []byte, err error) {
+func ExtractKeyFromToken(uuid []byte, privatekey *rsa.PrivateKey, tokens []byte) (symkey []byte, err error) {
 
-	return
+	for i := 0; i < (len(tokens)); i += 136 {
+		token := tokens[i : i+136]
+
+		if bytes.Equal(token[:8], uuid) {
+			hash := sha256.New()
+
+			symkey, err = rsa.DecryptOAEP(hash, rand.Reader, privatekey, token[8:], uuid)
+			return
+		}
+
+	}
+	return nil, ErrDecryption
 }

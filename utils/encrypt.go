@@ -152,6 +152,7 @@ func EncryptFile(filepath string, destination string, users ...User) (err error)
 	_ = binary.PutUvarint(tokens_size, uint64(len(tokens)))
 
 	ciphertext := append(tokens_size, tokens...)
+
 	/*
 		// Create AES-256 key using cryptographically secure random data
 		// and store in ciphertext[0:32]
@@ -231,7 +232,6 @@ func CreateUserToken(uuid []byte, publickey *rsa.PublicKey, symkey []byte) (toke
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("len of uid is %d, len of encrypted is %d, len of key was %d", len(uuid), len(encrypted), len(symkey))
 	token = append(uuid, encrypted...)
 
 	return

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"crypto/rsa"
 	"encoding/gob"
-	"fmt"
+	//"fmt"
 	"io"
 	"log"
 	"os"
@@ -50,17 +50,17 @@ func CheckFiles() bool {
 	decoder := gob.NewDecoder(prf)
 	decoder.Decode(&prk)
 	prf.Close()
-	fmt.Printf("Opened private key file: \n%v\n", prk)
+	//fmt.Printf("Opened private key file: \n%v\n", prk)
 
 	decoder = gob.NewDecoder(puf)
 	decoder.Decode(&puk)
 	puf.Close()
-	fmt.Printf("Opened public key file: \n%v\n", puk)
+	//fmt.Printf("Opened public key file: \n%v\n", puk)
 
 	user1 := User{Uuid: 1, Pubkey: puk, Privkey: prk}
 
 	EncryptFile(source, encryp, user1)
-	DecryptFile(encryp, result)
+	DecryptFile(encryp, result, user1)
 
 	test1 := CompareFiles(source, result)
 
@@ -69,7 +69,7 @@ func CheckFiles() bool {
 	result = "/path/to/files/result.jpg"
 
 	EncryptFile(source, encryp, user1)
-	DecryptFile(encryp, result)
+	DecryptFile(encryp, result, user1)
 
 	test2 := CompareFiles(source, result)
 
