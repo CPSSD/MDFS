@@ -2,6 +2,9 @@ package utils
 
 import (
 	"bytes"
+	"crypto/rsa"
+	"encoding/gob"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -32,7 +35,31 @@ func CheckFiles() bool {
 	encryp := "/path/to/files/test.enc"
 	result := "/path/to/files/result.txt"
 
-	EncryptFile(source, encryp)
+	var prk *rsa.PrivateKey
+	var puk *rsa.PublicKey
+
+	prf, err := os.Open("/path/to/files/.private_key_mdfs")
+	if err != nil {
+		panic(err)
+	}
+	puf, err := os.Open("/path/to/files/.public_key_mdfs")
+	if err != nil {
+		panic(err)
+	}
+
+	decoder := gob.NewDecoder(prf)
+	decoder.Decode(&prk)
+	prf.Close()
+	fmt.Printf("Opened private key file: \n%v\n", prk)
+
+	decoder = gob.NewDecoder(puf)
+	decoder.Decode(&puk)
+	puf.Close()
+	fmt.Printf("Opened public key file: \n%v\n", puk)
+
+	user1 := User{Uuid: 1, Pubkey: puk, Privkey: prk}
+
+	EncryptFile(source, encryp, user1)
 	DecryptFile(encryp, result)
 
 	test1 := CompareFiles(source, result)
@@ -41,7 +68,7 @@ func CheckFiles() bool {
 	encryp = "/path/to/files/david.enc"
 	result = "/path/to/files/result.jpg"
 
-	EncryptFile(source, encryp)
+	EncryptFile(source, encryp, user1)
 	DecryptFile(encryp, result)
 
 	test2 := CompareFiles(source, result)

@@ -106,14 +106,14 @@ func GenSymmetricKey() (key []byte, err error) {
 	// Create a byte array 32 bytes long
 	key = make([]byte, 32)
 
-	// Fill the array with random data
+	// Fill the array with crypto-secure random data
 	if _, err := io.ReadFull(rand.Reader, key); err != nil {
 		panic(err)
 	}
 	return
 }
 
-func EncryptFile(filepath string, destination string) (err error) {
+func EncryptFile(filepath string, destination string, users ...User) (err error) {
 
 	// Current structure of the final ciphertext:
 	// [ symmetric key (32B) | nonce (12B) | ciphertext (variable length) ]
@@ -133,19 +133,35 @@ func EncryptFile(filepath string, destination string) (err error) {
 	// or decrypter will be stored here for the minute, along with the
 	// user tokens. The actual encrypted data will be appended later.
 	// 44 bytes = 32 bytes for aes key + 12 bytes for the nonce.
-	ciphertext := make([]byte, 44)
+	//	ciphertext := make([]byte, 44)
 	// PREPEND of user tokens will happen here, for now we will just
 	// leave the key unencrypted
 
-	// Create AES-256 key using cryptographically secure random data
-	// and store in ciphertext[0:32]
-	key := ciphertext[:32]
-	if _, err = io.ReadFull(rand.Reader, key); err != nil {
+	// Generate a symmetric AES-256 key
+	symkey, err := GenSymmetricKey()
+	if err != nil {
 		panic(err)
 	}
 
+	tokens, err := PrepTokens(symkey, users...)
+	if err != nil {
+		panic(err)
+	}
+
+	tokens_size := make([]byte, 8)
+	_ = binary.PutUvarint(tokens_size, uint64(len(tokens)))
+
+	ciphertext := append(tokens_size, tokens...)
+	/*
+		// Create AES-256 key using cryptographically secure random data
+		// and store in ciphertext[0:32]
+		key := ciphertext[:32]
+		if _, err = io.ReadFull(rand.Reader, key); err != nil {
+			panic(err)
+		}
+	*/
 	// Create the AES cipher block from the key
-	if block, err = aes.NewCipher(key); err != nil {
+	if block, err = aes.NewCipher(symkey); err != nil {
 		panic(err)
 	}
 
@@ -154,11 +170,12 @@ func EncryptFile(filepath string, destination string) (err error) {
 
 	// Create a nonce (random data used in the encryption process).
 	// The nonce used in encryption must be the same used in the
-	// decryption process. Store it in ciphertext[32:32+12]
-	nonce := ciphertext[32 : 32+encrypter.NonceSize()]
+	// decryption process. Append it to ciphertext
+	nonce := make([]byte, encrypter.NonceSize())
 	if _, err = io.ReadFull(rand.Reader, nonce); err != nil {
 		panic(err)
 	}
+	ciphertext = append(ciphertext, nonce...)
 
 	// Seal appends the encrypted authenticated plaintext to ciphertext.
 	// The nil value is optional data which is not being used currently.
