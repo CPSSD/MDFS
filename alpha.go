@@ -1,34 +1,37 @@
 package main
 
 import (
-    "fmt"
-    //"io"
-    "os"
-    "crypto/rsa"
-    "encoding/gob"
+	"crypto/rsa"
+	"encoding/gob"
+	"fmt"
+	"os"
 )
 
 func main() {
 
-    var prk rsa.PrivateKey
-    var puk rsa.PublicKey
+	var prk rsa.PrivateKey
+	var puk rsa.PublicKey
 
-    prf, err := os.Open("/path/to/files/.private_key_mdfs")
-    if err != nil {
-        panic(err)
-    }
-    puf, err := os.Open("/path/to/files/.public_key_mdfs")
-    if err != nil {
-        panic(err)
-    }
+	prf, err := os.Open("/path/to/files/.private_key_mdfs")
+	if err != nil {
+		panic(err)
+	}
+	defer prf.Close()
 
-    decoder := gob.NewDecoder(prf)
-    decoder.Decode(&prk)
-    prf.Close()
-    fmt.Printf("Opened private key file: \n%v\n", prk)
+	puf, err := os.Open("/path/to/files/.public_key_mdfs")
+	if err != nil {
+		panic(err)
+	}
+	defer puf.Close()
 
-    decoder = gob.NewDecoder(puf)
-    decoder.Decode(&puk)
-    puf.Close()
-    fmt.Printf("Opened public key file: \n%v\n", puk)
+	var decoder gob.Encoder
+
+	decoder = gob.NewDecoder(prf)
+	decoder.Decode(&prk)
+	fmt.Printf("Opened private key file: \n%v\n", prk)
+
+	decoder = gob.NewDecoder(puf)
+	decoder.Decode(&puk)
+	fmt.Printf("Opened public key file: \n%v\n", puk)
+	// code duplication
 }
