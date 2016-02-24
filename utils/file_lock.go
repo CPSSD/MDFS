@@ -8,7 +8,6 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/binary"
-	"encoding/gob"
 	"errors"
 	"fmt"
 	"io"
@@ -264,6 +263,10 @@ func GenUserKeys() (success bool, err error) {
     var publickey *rsa.PublicKey
     publickey = &privatekey.PublicKey
 
+    // Output to files
+    StructToFile(privatekey, "/path/to/files/.private_key_mdfs")
+    StructToFile(publickey, "/path/to/files/.public_key_mdfs")
+/*
     // Create output file for the private key
     privatekeyout, err := os.Create("/path/to/files/.private_key_mdfs")
     if err != nil {
@@ -285,7 +288,7 @@ func GenUserKeys() (success bool, err error) {
 
     encoder = gob.NewEncoder(publickeyout)
     encoder.Encode(publickey)
-    publickeyout.Close()
+    publickeyout.Close()*/
 
     return true, err
 }
