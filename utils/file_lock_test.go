@@ -32,7 +32,7 @@ func CheckFiles() bool {
 
 	var prk *rsa.PrivateKey
 	var puk *rsa.PublicKey
-	
+
 	FileToStruct("/path/to/files/.private_key_mdfs", &prk)
 	FileToStruct("/path/to/files/.public_key_mdfs", &puk)
 
@@ -56,7 +56,6 @@ func CheckFiles() bool {
 
 	test1 := compareFiles(source, result)
 
-
 	// Test 2nd file
 	source = "/path/to/files/david.jpg"
 	encryp = "/path/to/files/david.enc"
@@ -70,7 +69,7 @@ func CheckFiles() bool {
 	if err != nil {
 		return false
 	}
-	
+
 	test2 := compareFiles(source, result)
 
 	return test1 && test2
