@@ -3,7 +3,6 @@ package utils
 import (
 	"bytes"
 	"crypto/rsa"
-	"encoding/gob"
 	"io"
 	"log"
 	"os"
@@ -29,36 +28,24 @@ const chunkSize = 4000
 
 func CheckFiles() bool {
 
-	//test two files for encryption and then decryption
-	source := "/path/to/files/test"
-	encryp := "/path/to/files/test.enc"
-	result := "/path/to/files/result.txt"
+	GenUserKeys()
 
 	var prk *rsa.PrivateKey
 	var puk *rsa.PublicKey
 
-	prf, err := os.Open("/path/to/files/.private_key_mdfs")
-	if err != nil {
-		panic(err)
-	}
-	puf, err := os.Open("/path/to/files/.public_key_mdfs")
-	if err != nil {
-		panic(err)
-	}
-
-	decoder := gob.NewDecoder(prf)
-	decoder.Decode(&prk)
-	prf.Close()
-	//fmt.Printf("Opened private key file: \n%v\n", prk)
-
-	decoder = gob.NewDecoder(puf)
-	decoder.Decode(&puk)
-	puf.Close()
-	//fmt.Printf("Opened public key file: \n%v\n", puk)
+	FileToStruct("/path/to/files/.private_key_mdfs", &prk)
+	FileToStruct("/path/to/files/.public_key_mdfs", &puk)
 
 	user1 := User{Uuid: 1, Pubkey: puk, Privkey: prk}
 
-	err = EncryptFile(source, encryp, user1)
+	//test two files for encryption and then decryption
+
+	// Test 1st file
+	source := "/path/to/files/test"
+	encryp := "/path/to/files/test.enc"
+	result := "/path/to/files/result.txt"
+
+	err := EncryptFile(source, encryp, user1)
 	if err != nil {
 		return false
 	}
@@ -69,6 +56,7 @@ func CheckFiles() bool {
 
 	test1 := compareFiles(source, result)
 
+	// Test 2nd file
 	source = "/path/to/files/david.jpg"
 	encryp = "/path/to/files/david.enc"
 	result = "/path/to/files/result.jpg"
@@ -81,7 +69,7 @@ func CheckFiles() bool {
 	if err != nil {
 		return false
 	}
-	
+
 	test2 := compareFiles(source, result)
 
 	return test1 && test2
