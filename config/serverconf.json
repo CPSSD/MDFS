@@ -1,5 +1,6 @@
 {
 	"protocol": "tcp",
-	"port": ":8081",
+	"host": "localhost",
+	"port": "8081",
 	"path": "/path/to/files/"
 }
