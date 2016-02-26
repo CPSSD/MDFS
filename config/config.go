@@ -8,6 +8,7 @@ import (
 
 type Configuration struct {
 	Protocol string
+	Host     string
 	Port     string
 	Path     string
 }
