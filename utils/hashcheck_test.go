@@ -8,7 +8,7 @@ func TestHash(t *testing.T) {
 		want           bool
 	}{
 		{"/path/to/files/", "test.txt", true},
-		{"/path/to/files/", "test.jpg", true}
+		{"/path/to/files/", "test.jpg", true},
 		{"/path/to/files/", "testing", false},
 	}
 	for _, c := range tests {

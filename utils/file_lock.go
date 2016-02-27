@@ -16,11 +16,6 @@ import (
 
 var (
 	// Custom error messages
-	ErrNoPublKey    = errors.New("Privatekey exists, but no publickey\n")
-	ErrNoPrivKey    = errors.New("Publickey exists, but no privatekey\n")
-	ErrNoKeyPair    = errors.New("No key-pair exists\n")
-	ErrKeyPairExist = errors.New("A user key-pair already exists\n")
-
 	ErrInvalidArgs = errors.New("Invalid arguments to function\n")
 
 	ErrEncryption = errors.New("Error in encryption\n")

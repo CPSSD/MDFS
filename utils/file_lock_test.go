@@ -30,7 +30,7 @@ const chunkSize = 4000
 
 func CheckCrypto() (success bool, err error) {
 
-	usrHome := GetUserHome() 
+	usrHome, err := GetUserHome() 
 	if err != nil {
 		return false, err
 	}
