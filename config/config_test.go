@@ -3,6 +3,7 @@ package config_test
 import (
 	"testing"
 	"github.com/CPSSD/MDFS/utils"
+	"github.com/CPSSD/MDFS/config"
 )
 
 func TestConfig(t *testing.T) {
