@@ -2,7 +2,7 @@ package utils
 
 import (
 	"testing"
-	"utils"
+	"github.com/CPSSD/MDFS/utils"
 )
 
 func TestHash(t *testing.T) {
