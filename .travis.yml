@@ -13,6 +13,6 @@ before_install:
   - mkdir -p $HOME/path/to/files/config
   - mkdir $HOME/path/to/files/stnode
   - mkdir $HOME/path/to/files/mdservice
-  - cp $HOME/gopath/src/github.com/CPSSD/MDFS/stnode/stnodeconf.json $HOME/path/to/files/config/stnodeconf.json
+  - cp $HOME/gopath/src/github.com/CPSSD/MDFS/storagenode/stnodeconf.json $HOME/path/to/files/config/stnodeconf.json
   - cp $HOME/gopath/src/github.com/CPSSD/MDFS/mdservice/mdserviceconf.json $HOME/path/to/files/config/mdserviceconf.json
   - cp $HOME/gopath/src/github.com/CPSSD/MDFS/test/* $HOME/path/to/files/
