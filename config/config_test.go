@@ -2,7 +2,7 @@ package config
 
 import (
 	"testing"
-	"utils"
+	"github.com/CPSSD/MDFS/utils"
 )
 
 func TestConfig(t *testing.T) {
