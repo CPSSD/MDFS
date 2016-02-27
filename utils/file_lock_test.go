@@ -3,6 +3,7 @@ package utils
 import (
 	"bytes"
 	"crypto/rsa"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -17,62 +18,66 @@ func TestEncryption(t *testing.T) {
 		{true},
 	}
 	for _, c := range tests {
-		got := CheckFiles()
+		got, err := CheckCrypto()
 		if got != c.equal {
-			t.Error("Encryption and decryption process failed.")
+			t.Error("Encryption and decryption process failed.\n")
+			fmt.Printf("Error: %s\n", err)
 		}
 	}
 }
 
 const chunkSize = 4000
 
-func CheckFiles() bool {
+func CheckCrypto() (success bool, err error) {
 
 	GenUserKeys()
 
 	var prk *rsa.PrivateKey
 	var puk *rsa.PublicKey
 
-	FileToStruct("/path/to/files/.private_key_mdfs", &prk)
-	FileToStruct("/path/to/files/.public_key_mdfs", &puk)
+	err = FileToStruct("/path/to/files/.private_key_mdfs", &prk)
+	if err != nil {
+		return false, err
+	}
+	puk = &prk.PublicKey
 
 	user1 := User{Uuid: 1, Pubkey: puk, Privkey: prk}
 
 	//test two files for encryption and then decryption
 
 	// Test 1st file
-	source := "/path/to/files/test"
-	encryp := "/path/to/files/test.enc"
+	source := "/path/to/files/test.txt"
+	encryp := "/path/to/files/test.txt.enc"
 	result := "/path/to/files/result.txt"
 
-	err := EncryptFile(source, encryp, user1)
+	err = EncryptFile(source, encryp, user1)
 	if err != nil {
-		return false
+		return false, err
 	}
 	err = DecryptFile(encryp, result, user1)
 	if err != nil {
-		return false
+		return false, err
 	}
 
 	test1 := compareFiles(source, result)
 
 	// Test 2nd file
-	source = "/path/to/files/david.jpg"
-	encryp = "/path/to/files/david.enc"
+	source = "/path/to/files/test.jpg"
+	encryp = "/path/to/files/test.jpg.enc"
 	result = "/path/to/files/result.jpg"
 
 	err = EncryptFile(source, encryp, user1)
 	if err != nil {
-		return false
+		return false, err
 	}
 	err = DecryptFile(encryp, result, user1)
 	if err != nil {
-		return false
+		return false, err
 	}
 
 	test2 := compareFiles(source, result)
 
-	return test1 && test2
+	return test1 && test2, err
 }
 
 func compareFiles(file1, file2 string) bool {

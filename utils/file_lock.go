@@ -9,7 +9,6 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"errors"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -207,30 +206,16 @@ func extractKeyFromToken(uuid []byte, privatekey *rsa.PrivateKey, tokens []byte)
 	return nil, ErrNoToken
 }
 
-func KeysExist() (success bool, err error) {
+func KeysExist() (success bool) {
 	// return true if the keys exist locally
 	// return false if only one or no keys exist
 
 	// If file exists, os.Stat will return data and err will be nil
 	// See if private exists
 	if _, err := os.Stat("/path/to/files/.private_key_mdfs"); err == nil {
-
-		// See if public exists
-		if _, err := os.Stat("/path/to/files/.public_key_mdfs"); err == nil {
-
-			return true, ErrKeyPairExist
-		}
-
-		// Error as defined above
-		return false, ErrNoPublKey
+		return true
 	}
-	if _, err := os.Stat("/path/to/files/.public_key_mdfs"); err == nil {
-
-		// Error as defined above
-		return false, ErrNoPrivKey
-	}
-
-	return false, ErrNoKeyPair
+	return false
 }
 
 func GenUserKeys() (success bool, err error) {
@@ -238,10 +223,7 @@ func GenUserKeys() (success bool, err error) {
 	// Generate a user's public and private key.
 
 	// Make sure they do not exist already.
-	if success, err := KeysExist(); err != ErrNoKeyPair {
-		if err == ErrKeyPairExist {
-			fmt.Printf("NOTE: \tDid not generate new keys because:\n\t%v\n", err)
-		}
+	if success := KeysExist(); success != false {
 		return success, err
 	}
 
@@ -253,36 +235,12 @@ func GenUserKeys() (success bool, err error) {
 		return false, err
 	}
 
-	// Get the public RSA key from the private one above
-	var publickey *rsa.PublicKey
-	publickey = &privatekey.PublicKey
-
+	/*	// Get the public RSA key from the private one above
+		var publickey *rsa.PublicKey
+		publickey = &privatekey.PublicKey
+	*/
 	// Output to files
 	StructToFile(privatekey, "/path/to/files/.private_key_mdfs")
-	StructToFile(publickey, "/path/to/files/.public_key_mdfs")
-	/*
-	   // Create output file for the private key
-	   privatekeyout, err := os.Create("/path/to/files/.private_key_mdfs")
-	   if err != nil {
-	       return false, err
-	   }
-
-	   // Create a gob encoder for the private key file
-	   encoder := gob.NewEncoder(privatekeyout)
-
-	   // Encode private key to the gob encoder's stream (the file)
-	   encoder.Encode(privatekey)
-	   privatekeyout.Close()
-
-	   // Same process for outputting the public key to disk
-	   publickeyout, err := os.Create("/path/to/files/.public_key_mdfs")
-	   if err != nil {
-	       return false, err
-	   }
-
-	   encoder = gob.NewEncoder(publickeyout)
-	   encoder.Encode(publickey)
-	   publickeyout.Close()*/
 
 	return true, err
 }
