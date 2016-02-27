@@ -51,11 +51,11 @@ func (s Server) getHost() string {
 }
 
 func (st *StorageNode) parseConfig() {
-	st.conf = config.ParseConfiguration("/path/to/files/stnode/config.json")
+	st.conf = config.ParseConfiguration("/path/to/files/config/stnodeconf.json")
 }
 
 func (md *MDService) parseConfig() {
-	md.conf = config.ParseConfiguration("/path/to/files/mdservice/config.json")
+	md.conf = config.ParseConfiguration("/path/to/files/config/mdserviceconf.json")
 }
 
 // checks request code and calls corresponding function

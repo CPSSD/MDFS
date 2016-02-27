@@ -10,3 +10,9 @@ notifications:
 before_install:
   - cp .netrc ~
   - chmod 600 .netrc
+  - mkdir -p /path/to/files/config
+  - mkdir /path/to/files/stnode
+  - mkdir /path/to/files/mdservice
+  - cp $HOME/gopath/src/github.com/CPSSD/MDFS/stnode/stnodeconf.json /path/to/files/config/stnodeconf.json
+  - cp $HOME/gopath/src/github.com/CPSSD/MDFS/mdservice/mdserviceconf.json /path/to/files/config/mdserviceconf.json
+  - cp $HOME/gopath/src/github.com/CPSSD/MDFS/test/* /path/to/files/

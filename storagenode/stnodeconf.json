@@ -1,0 +1,6 @@
+{
+	"protocol": "tcp",
+	"host": "localhost",
+	"port": "8081",
+	"path": "/path/to/files/stnode"
+}

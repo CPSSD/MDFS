@@ -4,14 +4,15 @@ import "testing"
 
 func TestConfig(t *testing.T) {
 	var tests = []struct {
-		filename, protocol, port, path string
+		filename, protocol, host, port, path string
 	}{
-		{"../storagenode/serverconf.json", "tcp", ":8081", "/path/to/files/"},
-	}
+		{"/path/to/files/config/stnodeconf.json", "tcp", "localhost", "8081", "/path/to/files/stnode/"},
+		{"/path/to/files/config/mdserviceconf.json", "tcp", "localhost", "1994", "/path/to/files/mdservice/"},
+
 
 	for _, c := range tests {
 		got := ParseConfiguration(c.filename)
-		if got.Path != c.path || got.Port != c.port || got.Protocol != c.protocol {
+		if got.Path != c.path || got.Host != c.host || got.Port != c.port || got.Protocol != c.protocol {
 			t.Error("Configuration variables does not contain expected values")
 		}
 	}
