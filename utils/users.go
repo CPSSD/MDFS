@@ -4,8 +4,8 @@ import (
 	"os/user"
 )
 
-func GetUserHome() (string, err) {
-	usr, err := user.Current()
+func GetUserHome() (string) {
+	usr, _ := user.Current()
 	dir := usr.HomeDir
-	return (dir, err)
+	return dir
 }

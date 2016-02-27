@@ -2,7 +2,6 @@ package utils
 
 import (
 	"testing"
-	"github.com/CPSSD/MDFS/utils"
 )
 
 func TestHash(t *testing.T) {
@@ -10,9 +9,9 @@ func TestHash(t *testing.T) {
 		path, filename string
 		want           bool
 	}{
-		{utils.GetUserHome()+"/path/to/files/", "test.txt", true},
-		{utils.GetUserHome()+"/path/to/files/", "test.jpg", true},
-		{utils.GetUserHome()+"/path/to/files/", "testing", false},
+		{GetUserHome()+"/path/to/files/", "test.txt", true},
+		{GetUserHome()+"/path/to/files/", "test.jpg", true},
+		{GetUserHome()+"/path/to/files/", "testing", false},
 	}
 	for _, c := range tests {
 		got := CheckForHash(c.path, c.filename)

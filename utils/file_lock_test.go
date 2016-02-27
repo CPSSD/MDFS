@@ -30,10 +30,8 @@ const chunkSize = 4000
 
 func CheckCrypto() (success bool, err error) {
 
-	usrHome, err := GetUserHome() 
-	if err != nil {
-		return false, err
-	}
+	usrHome := GetUserHome() 
+	
 	path := "/path/to/files/"
 
 	keys := usrHome + path + ".private_key_mdfs"
