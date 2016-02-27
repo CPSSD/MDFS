@@ -1,11 +1,8 @@
 language: go
 
 go:
-  - 1.3.3
-  - 1.4.2
-  - 1.5.1
+  - 1.5.3
   - release
-  - tip
 
 notifications:
   slack: mdfs:qbXCi4UykUI2w8vFBh4sw2X6
@@ -13,6 +10,3 @@ notifications:
 before_install:
   - cp .netrc ~
   - chmod 600 .netrc
-
-script:
-  - go test -v ./...
