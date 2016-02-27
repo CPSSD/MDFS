@@ -34,15 +34,16 @@ func CheckCrypto() (success bool, err error) {
 	if err != nil {
 		return false, err
 	}
+	path := "/path/to/files/"
 
-	keys := usrHome + ".private_key_mdfs"
-	source1 := usrHome + "test.txt"
-	encryp1  := usrHome + "test.enc"
-	result1 := usrHome + "result.txt"
+	keys := usrHome + path + ".private_key_mdfs"
+	source1 := usrHome + path + "test.txt"
+	encryp1  := usrHome + path + "test.enc"
+	result1 := usrHome + path + "result.txt"
 
-	source2 := usrHome + "test.jpg"
-	encryp2  := usrHome + "test.jpg.enc"
-	result2 := usrHome + "result.jpg"
+	source2 := usrHome + path + "test.jpg"
+	encryp2  := usrHome + path + "test.jpg.enc"
+	result2 := usrHome + path + "result.jpg"
 
 	GenUserKeys(keys)
 
