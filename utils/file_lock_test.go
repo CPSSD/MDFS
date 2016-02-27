@@ -30,12 +30,26 @@ const chunkSize = 4000
 
 func CheckCrypto() (success bool, err error) {
 
-	GenUserKeys()
+	usrHome := GetUserHome() 
+	if err != nil {
+		return false, err
+	}
+
+	keys := usrHome + ".private_key_mdfs"
+	source1 := usrHome + "test.txt"
+	encryp1  := usrHome + "test.enc"
+	result1 := usrHome + "result.txt"
+
+	source2 := usrHome + "test.jpg"
+	encryp2  := usrHome + "test.jpg.enc"
+	result2 := usrHome + "result.jpg"
+
+	GenUserKeys(keys)
 
 	var prk *rsa.PrivateKey
 	var puk *rsa.PublicKey
 
-	err = FileToStruct("/path/to/files/.private_key_mdfs", &prk)
+	err = FileToStruct(keys, &prk)
 	if err != nil {
 		return false, err
 	}
@@ -46,36 +60,28 @@ func CheckCrypto() (success bool, err error) {
 	//test two files for encryption and then decryption
 
 	// Test 1st file
-	source := "/path/to/files/test.txt"
-	encryp := "/path/to/files/test.txt.enc"
-	result := "/path/to/files/result.txt"
-
-	err = EncryptFile(source, encryp, user1)
+	err = EncryptFile(source1, encryp1, user1)
 	if err != nil {
 		return false, err
 	}
-	err = DecryptFile(encryp, result, user1)
+	err = DecryptFile(encryp1, result1, user1)
 	if err != nil {
 		return false, err
 	}
 
-	test1 := compareFiles(source, result)
+	test1 := compareFiles(source1, result1)
 
 	// Test 2nd file
-	source = "/path/to/files/test.jpg"
-	encryp = "/path/to/files/test.jpg.enc"
-	result = "/path/to/files/result.jpg"
-
-	err = EncryptFile(source, encryp, user1)
+	err = EncryptFile(source2, encryp2, user1)
 	if err != nil {
 		return false, err
 	}
-	err = DecryptFile(encryp, result, user1)
+	err = DecryptFile(encryp2, result2, user1)
 	if err != nil {
 		return false, err
 	}
 
-	test2 := compareFiles(source, result)
+	test2 := compareFiles(source2, result2)
 
 	return test1 && test2, err
 }

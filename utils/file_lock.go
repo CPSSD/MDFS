@@ -206,24 +206,24 @@ func extractKeyFromToken(uuid []byte, privatekey *rsa.PrivateKey, tokens []byte)
 	return nil, ErrNoToken
 }
 
-func KeysExist() (success bool) {
+func KeysExist(filepath string) (success bool) {
 	// return true if the keys exist locally
 	// return false if only one or no keys exist
 
 	// If file exists, os.Stat will return data and err will be nil
 	// See if private exists
-	if _, err := os.Stat("/path/to/files/.private_key_mdfs"); err == nil {
+	if _, err := os.Stat(filepath); err == nil {
 		return true
 	}
 	return false
 }
 
-func GenUserKeys() (success bool, err error) {
+func GenUserKeys(filepath string) (success bool, err error) {
 
 	// Generate a user's public and private key.
 
 	// Make sure they do not exist already.
-	if success := KeysExist(); success != false {
+	if success := KeysExist(filepath); success != false {
 		return success, err
 	}
 
@@ -240,7 +240,7 @@ func GenUserKeys() (success bool, err error) {
 		publickey = &privatekey.PublicKey
 	*/
 	// Output to files
-	StructToFile(privatekey, "/path/to/files/.private_key_mdfs")
+	StructToFile(privatekey, filepath)
 
 	return true, err
 }
