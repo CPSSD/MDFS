@@ -1,4 +1,4 @@
-package config
+package config_test
 
 import (
 	"testing"
@@ -13,7 +13,7 @@ func TestConfig(t *testing.T) {
 		{utils.GetUserHome()+"/path/to/files/config/mdservice_conf.json", "tcp", "localhost", "1994", "/path/to/files/mdservice/"},
 	}
 	for _, c := range tests {
-		got := ParseConfiguration(c.filename)
+		got := config.ParseConfiguration(c.filename)
 		if got.Path != c.path || got.Host != c.host || got.Port != c.port || got.Protocol != c.protocol {
 			t.Error("Configuration variables does not contain expected values")
 		}

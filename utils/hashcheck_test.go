@@ -1,4 +1,4 @@
-package utils
+package utils_test
 
 import (
 	"testing"
@@ -14,7 +14,7 @@ func TestHash(t *testing.T) {
 		{GetUserHome()+"/path/to/files/", "testing", false},
 	}
 	for _, c := range tests {
-		got := CheckForHash(c.path, c.filename)
+		got := utils.CheckForHash(c.path, c.filename)
 		if got != c.want {
 			t.Errorf("CheckForHash(%q, %q) == %t, want %t", c.path, c.filename, got, c.want)
 		}
