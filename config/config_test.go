@@ -1,6 +1,9 @@
 package config
 
-import "testing"
+import (
+	"testing"
+	"utils"
+)
 
 func TestConfig(t *testing.T) {
 	var tests = []struct {

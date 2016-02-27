@@ -1,15 +1,18 @@
 package utils
 
-import "testing"
+import (
+	"testing"
+	"utils"
+)
 
 func TestHash(t *testing.T) {
 	var tests = []struct {
 		path, filename string
 		want           bool
 	}{
-		{"/path/to/files/", "test.txt", true},
-		{"/path/to/files/", "test.jpg", true}
-		{"/path/to/files/", "testing", false},
+		{utils.GetUserHome()+"/path/to/files/", "test.txt", true},
+		{utils.GetUserHome()+"/path/to/files/", "test.jpg", true}
+		{utils.GetUserHome()+"/path/to/files/", "testing", false},
 	}
 	for _, c := range tests {
 		got := CheckForHash(c.path, c.filename)
