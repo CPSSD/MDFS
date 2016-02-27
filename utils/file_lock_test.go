@@ -1,9 +1,10 @@
-package utils
+package utils_test
 
 import (
 	"bytes"
 	"crypto/rsa"
 	"fmt"
+	"github.com/CPSSD/MDFS/utils"
 	"io"
 	"log"
 	"os"
@@ -30,40 +31,40 @@ const chunkSize = 4000
 
 func CheckCrypto() (success bool, err error) {
 
-	usrHome := GetUserHome() 
-	
+	usrHome := utils.GetUserHome()
+
 	path := "/path/to/files/"
 
 	keys := usrHome + path + ".private_key_mdfs"
 	source1 := usrHome + path + "test.txt"
-	encryp1  := usrHome + path + "test.enc"
+	encryp1 := usrHome + path + "test.enc"
 	result1 := usrHome + path + "result.txt"
 
 	source2 := usrHome + path + "test.jpg"
-	encryp2  := usrHome + path + "test.jpg.enc"
+	encryp2 := usrHome + path + "test.jpg.enc"
 	result2 := usrHome + path + "result.jpg"
 
-	GenUserKeys(keys)
+	utils.GenUserKeys(keys)
 
 	var prk *rsa.PrivateKey
 	var puk *rsa.PublicKey
 
-	err = FileToStruct(keys, &prk)
+	err = utils.FileToStruct(keys, &prk)
 	if err != nil {
 		return false, err
 	}
 	puk = &prk.PublicKey
 
-	user1 := User{Uuid: 1, Pubkey: puk, Privkey: prk}
+	user1 := utils.User{Uuid: 1, Pubkey: puk, Privkey: prk}
 
 	//test two files for encryption and then decryption
 
 	// Test 1st file
-	err = EncryptFile(source1, encryp1, user1)
+	err = utils.EncryptFile(source1, encryp1, user1)
 	if err != nil {
 		return false, err
 	}
-	err = DecryptFile(encryp1, result1, user1)
+	err = utils.DecryptFile(encryp1, result1, user1)
 	if err != nil {
 		return false, err
 	}
@@ -71,11 +72,11 @@ func CheckCrypto() (success bool, err error) {
 	test1 := compareFiles(source1, result1)
 
 	// Test 2nd file
-	err = EncryptFile(source2, encryp2, user1)
+	err = utils.EncryptFile(source2, encryp2, user1)
 	if err != nil {
 		return false, err
 	}
-	err = DecryptFile(encryp2, result2, user1)
+	err = utils.DecryptFile(encryp2, result2, user1)
 	if err != nil {
 		return false, err
 	}
