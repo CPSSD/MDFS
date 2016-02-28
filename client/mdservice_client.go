@@ -1,26 +1,48 @@
-package client
+package main
 
 import (
 	"github.com/CPSSD/MDFS/mdservice"
+	"os"
+	"fmt"
+	"bufio"
+	"strings"
 )
 
+var currentDir mdservice.DirNode
+var user mdservice.UUID
+
 func main() {
-	rootDir := initialise()
+	rootDir := mdservice.MkRoot()
+	currentDir := rootDir
+	user.Initialise("jim")
 
 	for {
 		reader := bufio.NewReader(os.Stdin)
 		fmt.Print(">> ")
-		text, _ := reader.ReadString('\n')
+		cmd, _ := reader.ReadString('\n')
+		// remove trailing newline character before splitting
+		args := strings.Split(strings.TrimSpace(cmd), " ")
 
-		switch (text) {
-		case "touch":
+		switch (args[0]) {
+		case "":
+			continue
+
+		case "ls":
+			if !currentDir.IsEmpty() {
+				fmt.Printf("%s\t%s\t%s\n", "perm", "owner", "name")
+				currentDir.Ls()
+			}
+		
+		case "mkdir":
+			if len(args) > 1 && args[1] != "" {
+				currentDir.MkDir(args[1], 0, &user)
+			}
+		
+		case "exit":
+			os.Exit(1)
+		
+		default:
+			fmt.Println("Unrecognised command")
 		}
 	}
-}
-
-func initialise() *mdservice.DirNode {
-	root := new(mdservice.UUID)
-	root.Init("root")
-	rootDir := new(mdservice.DirNode)
-	rootDir.Init(nil, "root", "0", root)
 }

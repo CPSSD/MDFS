@@ -35,3 +35,6 @@ go run client/client.go -send=/path/to/files/test.jpg
 ```
 
 File will be stored in the configured storage location in the json file (/path/to/files/ by default).
+
+## Using the metadata service client
+``go run client/mdservice_client.go`` to run interactive shell for interacting with the metadata service. It accepts bash-like commands such as `ls` and `mkdir`. It currently only runs locally to test filesystem creation.
