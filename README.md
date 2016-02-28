@@ -22,7 +22,7 @@ go run storagenode/server.go
 Request a file using the flag `-request={hex representation of hash}`
 
 ```
-go run client/client.go -request=6f5902ac237024bdd0c176cb93063dc4
+go run client/stnode/client.go -request=6f5902ac237024bdd0c176cb93063dc4
 ```
 
 File can then be found in /path/to/files/output
@@ -31,10 +31,10 @@ File can then be found in /path/to/files/output
 Send a file using the flag `-send={path to file}`
 
 ```
-go run client/client.go -send=/path/to/files/test.jpg
+go run client/stnode/client.go -send=/path/to/files/test.jpg
 ```
 
 File will be stored in the configured storage location in the json file (/path/to/files/ by default).
 
 ## Using the metadata service client
-``go run client/mdservice_client.go`` to run interactive shell for interacting with the metadata service. It accepts bash-like commands such as `ls` and `mkdir`. It currently only runs locally to test filesystem creation.
+``go run client/mdservice/mdservice_client.go`` to run interactive shell for interacting with the metadata service. It accepts bash-like commands such as `ls` and `mkdir`. It currently only runs locally to test filesystem creation.
