@@ -26,10 +26,10 @@ type MDService struct {
 // the Server interface
 type TCPServer interface {
 	parseConfig()
-	getPath()     string
+	getPath() string
 	getProtocol() string
-	getPort()     string
-	getHost()     string
+	getPort() string
+	getHost() string
 	handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bufio.Writer)
 }
 
@@ -51,11 +51,11 @@ func (s Server) getHost() string {
 }
 
 func (st *StorageNode) parseConfig() {
-	st.conf = config.ParseConfiguration("/path/to/files/config/stnodeconf.json")
+	st.conf = config.ParseConfiguration(utils.GetUserHome() + "/path/to/files/config/stnode_conf.json")
 }
 
 func (md *MDService) parseConfig() {
-	md.conf = config.ParseConfiguration("/path/to/files/config/mdserviceconf.json")
+	md.conf = config.ParseConfiguration(utils.GetUserHome() + "/path/to/files/config/mdservice_conf.json")
 }
 
 // checks request code and calls corresponding function
