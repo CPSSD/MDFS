@@ -51,7 +51,7 @@ func (s Server) getHost() string {
 }
 
 func (st *StorageNode) parseConfig() {
-	st.conf = config.ParseConfiguration(utils.GetUserHome() + "/path/to/files/config/stnode_conf.json")
+	st.conf = config.ParseConfiguration(utils.GetUserHome() + "/.stnode/stnode_conf.json")
 }
 
 func (md *MDService) parseConfig() {
