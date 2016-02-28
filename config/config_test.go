@@ -1,17 +1,17 @@
 package config_test
 
 import (
-	"testing"
-	"github.com/CPSSD/MDFS/utils"
 	"github.com/CPSSD/MDFS/config"
+	"github.com/CPSSD/MDFS/utils"
+	"testing"
 )
 
 func TestConfig(t *testing.T) {
 	var tests = []struct {
 		filename, protocol, host, port, path string
 	}{
-		{utils.GetUserHome()+"/path/to/files/config/stnode_conf.json", "tcp", "localhost", "8081", "/path/to/files/stnode/"},
-		{utils.GetUserHome()+"/path/to/files/config/mdservice_conf.json", "tcp", "localhost", "1994", "/path/to/files/mdservice/"},
+		{utils.GetUserHome() + "/path/to/files/config/stnode_conf.json", "tcp", "localhost", "8081", "/path/to/files/stnode/"},
+		{utils.GetUserHome() + "/path/to/files/config/mdservice_conf.json", "tcp", "localhost", "1994", "/path/to/files/mdservice/"},
 	}
 	for _, c := range tests {
 		got := config.ParseConfiguration(c.filename)
