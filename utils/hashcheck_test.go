@@ -10,9 +10,9 @@ func TestHash(t *testing.T) {
 		path, filename string
 		want           bool
 	}{
-		{utils.GetUserHome() + "/path/to/files/", "test.txt", true},
-		{utils.GetUserHome() + "/path/to/files/", "test.jpg", true},
-		{utils.GetUserHome() + "/path/to/files/", "testing", false},
+		{utils.GetUserHome() + "/.testing_files/", "test.txt", true},
+		{utils.GetUserHome() + "/.testing_files/", "test.jpg", true},
+		{utils.GetUserHome() + "/.testing_files/", "testing", false},
 	}
 	for _, c := range tests {
 		got := utils.CheckForHash(c.path, c.filename)

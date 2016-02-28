@@ -10,9 +10,6 @@ notifications:
 before_install:
   - cp .netrc ~
   - chmod 600 .netrc
-  - mkdir -p $HOME/path/to/files/config
-  - mkdir $HOME/path/to/files/stnode
-  - mkdir $HOME/path/to/files/mdservice
-  - cp $HOME/gopath/src/github.com/CPSSD/MDFS/storagenode/stnode_conf.json $HOME/path/to/files/config/
-  - cp $HOME/gopath/src/github.com/CPSSD/MDFS/mdservice/mdservice_conf.json $HOME/path/to/files/config/
-  - cp $HOME/gopath/src/github.com/CPSSD/MDFS/testing_files/* $HOME/path/to/files/
+  - go run $HOME/gopath/src/github.com/CPSSD/MDFS/testing_files/testing_init.go
+  - go run $HOME/gopath/src/github.com/CPSSD/MDFS/storagenode/stnode_init.go
+  - go run $HOME/gopath/src/github.com/CPSSD/MDFS/mdservice/mdservice_init.go

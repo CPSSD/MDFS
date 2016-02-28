@@ -71,7 +71,7 @@ func main() {
 		handlecode, _ := r.ReadByte()
 		switch handlecode {
 		case 3: // file available
-			output := "/path/to/files/output"
+			output := "./output"
 			utils.ReceiveFile(conn, r, output)
 		}
 

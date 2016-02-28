@@ -33,7 +33,7 @@ func CheckCrypto() (success bool, err error) {
 
 	usrHome := utils.GetUserHome()
 
-	path := "/path/to/files/"
+	path := "/.testing_files/"
 
 	keys := usrHome + path + ".private_key_mdfs"
 	source1 := usrHome + path + "test.txt"
