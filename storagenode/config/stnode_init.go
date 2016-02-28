@@ -19,7 +19,7 @@ func main() {
 		panic(err)
 	}
 
-	conf := config.ParseConfiguration("./storagenode/stnode_conf.json")
+	conf := config.ParseConfiguration("./storagenode/config/stnode_conf.json")
 	conf.Path = utils.GetUserHome() + "/.stnode/"
 
 	encoder := json.NewEncoder(fo)

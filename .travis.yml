@@ -11,5 +11,5 @@ before_install:
   - cp .netrc ~
   - chmod 600 .netrc
   - go run $HOME/gopath/src/github.com/CPSSD/MDFS/testing_files/testing_init.go
-  - go run $HOME/gopath/src/github.com/CPSSD/MDFS/storagenode/stnode_init.go
-  - go run $HOME/gopath/src/github.com/CPSSD/MDFS/mdservice/mdservice_init.go
+  - go run $HOME/gopath/src/github.com/CPSSD/MDFS/storagenode/config/stnode_init.go
+  - go run $HOME/gopath/src/github.com/CPSSD/MDFS/mdservice/config/mdservice_init.go

@@ -19,7 +19,7 @@ func main() {
 		panic(err)
 	}
 
-	conf := config.ParseConfiguration("./mdservice/mdservice_conf.json")
+	conf := config.ParseConfiguration("./mdservice/config/mdservice_conf.json")
 	conf.Path = utils.GetUserHome() + "/.mdservice/"
 
 	encoder := json.NewEncoder(fo)

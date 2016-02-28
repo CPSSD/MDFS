@@ -3,13 +3,13 @@ Massively Distributed File System
 
 ## Setup
 ### Testing
-Before testing, run the entire setup using ``go run testing_files/testing_init.go && go run storagenode/stnode_init.go && go run mdservice/mdservice_init.go``. This will create the necessary folder structure ``$HOME/.testing_files/``. The test files will be copied to this location. This will also set up the neccessary files as mentioned below.
+Before testing, run the entire setup using ``go run testing_files/testing_init.go && go run storagenode/config/stnode_init.go && go run mdservice/config/mdservice_init.go``. This will create the necessary folder structure ``$HOME/.testing_files/``. The test files will be copied to this location. This will also set up the neccessary files as mentioned below.
 
 ### Storage Node
-Before you begin, setup the storage node using ``go run storagenode/stnode_init.go``. This will create the necessary folder structure ``$HOME/.stnode/``. The server's configuration files will be copied to ``$HOME/.stndode/stnode_conf.json``.
+Before you begin, setup the storage node using ``go run storagenode/config/stnode_init.go``. This will create the necessary folder structure ``$HOME/.stnode/``. The server's configuration files will be copied to ``$HOME/.stndode/stnode_conf.json``.
 
 ### Metadata Service
-Setup the metadata service using ``go run mdservice/mdservice_init.go``. This does not do anything at the moment.
+Setup the metadata service using ``go run mdservice/config/mdservice_init.go``. This does not do anything at the moment.
 
 ## Usage
 ### Run the storage node
