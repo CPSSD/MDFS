@@ -23,7 +23,7 @@ func main() {
 	// doesn't get configuration from file
 	// it will get it from metadata service
 	protocol := "tcp"
-	socket := "127.0.0.1:8081"
+	socket := "localhost:8081"
 
 	// connect to this socket
 	// there should probably be error checking here
@@ -71,7 +71,7 @@ func main() {
 		handlecode, _ := r.ReadByte()
 		switch handlecode {
 		case 3: // file available
-			output := "/path/to/files/client/output"
+			output := "/path/to/files/output"
 			utils.ReceiveFile(conn, r, output)
 		}
 
