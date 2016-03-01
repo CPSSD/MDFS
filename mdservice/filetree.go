@@ -56,6 +56,20 @@ func (n *Node) initialise(p *DirNode, nm string, perm uint16, ownr *UUID) {
 	n.owner = *ownr
 }
 
+
+func validateName(nm string) bool {
+	illChars := "/ $%^&*()[]{}~#@'\""
+	for _, elem1 := range nm {
+		for _, elem2 := range illChars {
+			if elem1 == elem2 {
+				fmt.Printf("Invalid character in directory name\n")
+				return false
+			}
+		}
+	}
+	return true
+}
+
 func (n Node) GetName() string {
 	return n.name
 }
@@ -93,6 +107,10 @@ func (dir *DirNode) Pwd() {
 
 func (dir *DirNode) MkDir(nm string, perm uint16, ownr *UUID) *DirNode {
 	d := new(DirNode)
+	valid := validateName(nm)
+	if !valid {
+		return d
+	}
 	d.initialise(dir, nm, perm, ownr)
 	d.contents = nil
 	dir.contents = append(dir.contents, *d)
