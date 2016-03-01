@@ -1,10 +1,10 @@
 package main
 
 import (
+	"bufio"
+	"fmt"
 	"github.com/CPSSD/MDFS/mdservice"
 	"os"
-	"fmt"
-	"bufio"
 	"strings"
 )
 
@@ -18,12 +18,12 @@ func main() {
 
 	for {
 		reader := bufio.NewReader(os.Stdin)
-		fmt.Print(">> ")
+		fmt.Print(user.String() + ":" + currentDir.Cwd() + ">> ")
 		cmd, _ := reader.ReadString('\n')
 		// remove trailing newline character before splitting
 		args := strings.Split(strings.TrimSpace(cmd), " ")
 
-		switch (args[0]) {
+		switch args[0] {
 		case "":
 			continue
 
@@ -42,15 +42,15 @@ func main() {
 				fmt.Printf("%s\t%s\t%s\n", "perm", "owner", "name")
 				currentDir.Ls()
 			}
-		
+
 		case "mkdir":
 			if len(args) > 1 && args[1] != "" {
 				currentDir.MkDir(args[1], 0, &user)
 			}
-		
+
 		case "exit":
 			os.Exit(1)
-		
+
 		default:
 			fmt.Println("Unrecognised command")
 		}

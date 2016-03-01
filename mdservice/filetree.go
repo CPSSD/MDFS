@@ -1,12 +1,12 @@
 package mdservice
 
 import (
-	"net"
 	"errors"
 	"fmt"
-	"strings"
-	"reflect"
 	"github.com/CPSSD/MDFS/utils"
+	"net"
+	"reflect"
+	"strings"
 )
 
 // structs
@@ -36,8 +36,6 @@ type UNID struct {
 	location net.IP
 }
 
-
-
 // interfaces
 type iNode interface {
 	String() string
@@ -46,8 +44,6 @@ type iNode interface {
 	GetName() string
 }
 
-
-
 // node methods
 func (n *Node) initialise(p *DirNode, nm string, perm uint16, ownr *UUID) {
 	n.parent = p
@@ -55,7 +51,6 @@ func (n *Node) initialise(p *DirNode, nm string, perm uint16, ownr *UUID) {
 	n.permissions = perm
 	n.owner = *ownr
 }
-
 
 func validateName(nm string) bool {
 	illChars := "/ $%^&*()[]{}~#@'\""
@@ -82,13 +77,25 @@ func (n Node) isDirNode() bool {
 	return reflect.TypeOf(n).String() == "DirNode"
 }
 
-
-
 // directory methods
 func (dir *DirNode) Ls() {
 	for _, elem := range dir.contents {
 		fmt.Println(elem)
 	}
+}
+
+func (dir *DirNode) Cwd() string {
+	// dir node pointer for traversing the path back to root
+	traverser := *dir
+
+	// buffer to hold path
+	buffer := []string{}
+
+	for i := traverser.GetName(); i != "/"; i = traverser.GetName() {
+		buffer = utils.Prepend(buffer, i)
+		traverser = *traverser.parent
+	}
+	return "/" + strings.Join(buffer, "/")
 }
 
 func (dir *DirNode) Pwd() {
@@ -102,7 +109,7 @@ func (dir *DirNode) Pwd() {
 		buffer = utils.Prepend(buffer, i)
 		traverser = *traverser.parent
 	}
-	fmt.Println("/"+strings.Join(buffer, "/"))
+	fmt.Println("/" + strings.Join(buffer, "/"))
 }
 
 func (dir *DirNode) MkDir(nm string, perm uint16, ownr *UUID) *DirNode {
@@ -149,14 +156,10 @@ func Cd(current *DirNode, next string) (error, *DirNode) {
 	return err, current
 }
 
-
-
 // uuid methods
 func (u *UUID) Initialise(uname string) {
 	u.username = uname
 }
-
-
 
 // string functions
 func (u UUID) String() string {
