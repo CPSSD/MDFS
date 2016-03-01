@@ -27,6 +27,16 @@ func main() {
 		case "":
 			continue
 
+		case "pwd":
+			currentDir.Pwd()
+
+		case "cd":
+			err, next := mdservice.Cd(currentDir, args[1])
+			if err != nil {
+				fmt.Println(err)
+			}
+			currentDir = next
+
 		case "ls":
 			if !currentDir.IsEmpty() {
 				fmt.Printf("%s\t%s\t%s\n", "perm", "owner", "name")

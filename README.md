@@ -1,6 +1,9 @@
 # MDFS [![Build Status](https://travis-ci.com/CPSSD/MDFS.svg?token=ZNLEp9wQPE3kma4CBH8m&branch=master)](https://travis-ci.com/CPSSD/MDFS)
 Massively Distributed File System
 
+## Repository Layout
+There are three pieces of software contained within the MDFS repository: the metadata service, the storage node and the client for interacting with the two services. There are currently separate clients for interacting with the two services but these will eventually be merged.
+
 ## Setup
 ### Testing
 Before testing, run the entire setup using ``go run testing_files/testing_init.go && go run storagenode/config/stnode_init.go && go run mdservice/config/mdservice_init.go``. This will create the necessary folder structure ``$HOME/.testing_files/``. The test files will be copied to this location. This will also set up the neccessary files as mentioned below.
@@ -37,4 +40,13 @@ go run client/stnode/client.go -send=/path/to/files/test.jpg
 File will be stored in the configured storage location in the json file (/path/to/files/ by default).
 
 ## Using the metadata service client
-``go run client/mdservice/mdservice_client.go`` to run interactive shell for interacting with the metadata service. It accepts bash-like commands such as `ls` and `mkdir`. It currently only runs locally to test filesystem creation.
+``go run client/mdservice/mdservice_client.go`` to run interactive shell for interacting with the metadata service. It currently only runs locally to test filesystem creation.
+
+It currently accepts the following bash-like commands:
+```BASH
+cd
+pwd
+ls
+mkdir
+exit
+```

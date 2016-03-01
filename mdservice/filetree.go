@@ -2,7 +2,11 @@ package mdservice
 
 import (
 	"net"
+	"errors"
 	"fmt"
+	"strings"
+	"reflect"
+	"github.com/CPSSD/MDFS/utils"
 )
 
 // structs
@@ -33,12 +37,18 @@ type UNID struct {
 }
 
 
+
 // interfaces
 type iNode interface {
 	String() string
+	isFileNode() bool
+	isDirNode() bool
+	GetName() string
 }
 
-// methods
+
+
+// node methods
 func (n *Node) initialise(p *DirNode, nm string, perm uint16, ownr *UUID) {
 	n.parent = p
 	n.name = nm
@@ -46,23 +56,39 @@ func (n *Node) initialise(p *DirNode, nm string, perm uint16, ownr *UUID) {
 	n.owner = *ownr
 }
 
-func (n *Node) GetName() string {
+func (n Node) GetName() string {
 	return n.name
 }
 
+func (n Node) isFileNode() bool {
+	return reflect.TypeOf(n).String() == "FileNode"
+}
+
+func (n Node) isDirNode() bool {
+	return reflect.TypeOf(n).String() == "DirNode"
+}
+
+
+
+// directory methods
 func (dir *DirNode) Ls() {
 	for _, elem := range dir.contents {
 		fmt.Println(elem)
 	}
 }
 
-func MkRoot() *DirNode {
-	root := new(UUID)
-	root.Initialise("root")
-	rootDir := new(DirNode)
-	rootDir.initialise(nil, "/", 0, root)
-	rootDir.contents = nil
-	return rootDir
+func (dir *DirNode) Pwd() {
+	// dir node pointer for traversing the path back to root
+	traverser := *dir
+
+	// buffer to hold path
+	buffer := []string{}
+
+	for i := traverser.GetName(); i != "/"; i = traverser.GetName() {
+		buffer = utils.Prepend(buffer, i)
+		traverser = *traverser.parent
+	}
+	fmt.Println("/"+strings.Join(buffer, "/"))
 }
 
 func (dir *DirNode) MkDir(nm string, perm uint16, ownr *UUID) *DirNode {
@@ -80,9 +106,38 @@ func (dir *DirNode) IsEmpty() bool {
 	return false
 }
 
+func MkRoot() *DirNode {
+	root := new(UUID)
+	root.Initialise("root")
+	rootDir := new(DirNode)
+	rootDir.initialise(nil, "/", 0, root)
+	rootDir.contents = nil
+	return rootDir
+}
+
+func Cd(current *DirNode, next string) (error, *DirNode) {
+	if next == ".." && current.name != "/" {
+		return nil, current.parent
+	}
+
+	// check if requested dir is child of current
+	for _, child := range current.contents {
+		v, ok := child.(DirNode) // assert that the child is a dir and not a file
+		if ok && child.GetName() == next {
+			return nil, &v
+		}
+	}
+	err := errors.New("Directory does not exist")
+	return err, current
+}
+
+
+
+// uuid methods
 func (u *UUID) Initialise(uname string) {
 	u.username = uname
 }
+
 
 
 // string functions
