@@ -7,8 +7,10 @@ import (
 	"github.com/CPSSD/MDFS/config"
 	"github.com/CPSSD/MDFS/utils"
 	"io"
+	"io/ioutil"
 	"net"
 	"os"
+	"strings"
 )
 
 type Server struct {
@@ -55,7 +57,7 @@ func (st *StorageNode) parseConfig() {
 }
 
 func (md *MDService) parseConfig() {
-	md.conf = config.ParseConfiguration(utils.GetUserHome() + "/path/to/files/config/mdservice_conf.json")
+	md.conf = config.ParseConfiguration(utils.GetUserHome() + "/.mdservice/.mdservice_conf.json")
 }
 
 // checks request code and calls corresponding function
@@ -109,8 +111,81 @@ func (st StorageNode) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *
 func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bufio.Writer) {
 
 	switch code {
-	default:
-		return
+	case 1: // ls
+		fmt.Println("In ls")
+
+		lenArgs, _ := r.ReadByte()
+		fmt.Printf("lenArgs = %v\n", lenArgs)
+
+		msg := ""
+
+		if lenArgs == 1 {
+			files, err := ioutil.ReadDir(md.getPath())
+			if err != nil {
+				panic(err)
+			}
+
+			for _, file := range files {
+				msg = msg + "," + file.Name()
+			}
+		}
+
+		for i := 1; i < int(lenArgs); i++ {
+			fmt.Printf("  in loop at pos %d ready to read\n", i)
+
+			path, _ := r.ReadString('\n')
+			path = strings.TrimSuffix(path, "\n")
+
+			msg = msg + path + ":/"
+
+			fmt.Printf("  in loop read in path: %s", path)
+
+			files, err := ioutil.ReadDir(md.getPath() + path)
+			if err != nil {
+				panic(err)
+			}
+
+			for _, file := range files {
+				msg = msg + "," + file.Name()
+			}
+		}
+
+		w.WriteString(msg + ", ")
+		w.Flush()
+
+		fmt.Println("Fin ls")
+
+	case 2: // mkdir
+		fmt.Println("In mkdir")
+
+		lenArgs, _ := r.ReadByte()
+		fmt.Printf("lenArgs = %v\n", lenArgs)
+
+		for i := 1; i < int(lenArgs); i++ {
+			fmt.Printf("  in loop at pos %d ready to read\n", i)
+			path, _ := r.ReadString('\n')
+			fmt.Printf("  in loop read in path: %s", path)
+			os.MkdirAll(md.getPath()+strings.TrimSpace(path), 0777)
+		}
+		fmt.Println("Fin mkdir")
+
+	case 3: // rmdir
+		fmt.Println("In rmdir")
+
+		lenArgs, _ := r.ReadByte()
+		fmt.Printf("lenArgs = %v\n", lenArgs)
+
+		for i := 1; i < int(lenArgs); i++ {
+			fmt.Printf("  in loop at pos %d ready to read\n", i)
+			path, _ := r.ReadString('\n')
+			fmt.Printf("  in loop read in path: %s", path)
+			os.Remove(md.getPath() + "./" + strings.TrimSpace(path))
+		}
+		fmt.Println("Fin mkdir")
+
+	case 4: // cd
+	case 5: // send
+	case 6: // request
 	}
 }
 
@@ -159,7 +234,16 @@ func handleRequest(conn net.Conn, in TCPServer) {
 	w := bufio.NewWriter(conn)
 
 	// var code uint8
-	code, _ := r.ReadByte()
+	fmt.Println("Ready to read code")
+	code, err := r.ReadByte()
+	for code != 0 {
 
-	in.handleCode(code, conn, r, w)
+		fmt.Printf("Read code: %v\n", code)
+		in.handleCode(code, conn, r, w)
+
+		code, err = r.ReadByte()
+
+	}
+
+	fmt.Printf("Connection close with code of %v and err of: %v\n", code, err)
 }

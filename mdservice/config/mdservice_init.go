@@ -13,14 +13,18 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	err = os.MkdirAll(utils.GetUserHome()+"/.mdservice/files/", 0777)
+	if err != nil {
+		panic(err)
+	}
 
-	fo, err := os.Create(utils.GetUserHome() + "/.mdservice/mdservice_conf.json")
+	fo, err := os.Create(utils.GetUserHome() + "/.mdservice/.mdservice_conf.json")
 	if err != nil {
 		panic(err)
 	}
 
 	conf := config.ParseConfiguration("./mdservice/config/mdservice_conf.json")
-	conf.Path = utils.GetUserHome() + "/.mdservice/"
+	conf.Path = utils.GetUserHome() + "/.mdservice/files/"
 
 	encoder := json.NewEncoder(fo)
 
