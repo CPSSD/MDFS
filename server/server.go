@@ -168,6 +168,9 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 	case 2: // mkdir
 		fmt.Println("In mkdir")
 
+		currentDir, _ := r.ReadString('\n')
+		currentDir = strings.TrimSuffix(currentDir, "\n")
+
 		lenArgs, _ := r.ReadByte()
 		fmt.Printf("lenArgs = %v\n", lenArgs)
 
@@ -175,13 +178,16 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 			fmt.Printf("  in loop at pos %d ready to read\n", i)
 			targetPath, _ := r.ReadString('\n')
 			fmt.Printf("  in loop read in targetPath: %s", targetPath)
-			os.MkdirAll(md.getPath()+strings.TrimSpace(targetPath), 0777)
+			os.MkdirAll(md.getPath()+currentDir+strings.TrimSpace(targetPath), 0777)
 		}
 		fmt.Println("Fin mkdir")
 
 	case 3: // rmdir
 		fmt.Println("In rmdir")
 
+		currentDir, _ := r.ReadString('\n')
+		currentDir = strings.TrimSuffix(currentDir, "\n")
+
 		lenArgs, _ := r.ReadByte()
 		fmt.Printf("lenArgs = %v\n", lenArgs)
 
@@ -189,7 +195,7 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 			fmt.Printf("  in loop at pos %d ready to read\n", i)
 			targetPath, _ := r.ReadString('\n')
 			fmt.Printf("  in loop read in targetPath: %s", targetPath)
-			os.Remove(md.getPath() + "./" + strings.TrimSpace(targetPath))
+			os.Remove(md.getPath() + currentDir + strings.TrimSpace(targetPath))
 		}
 		fmt.Println("Fin mkdir")
 
@@ -225,7 +231,7 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 			} else {
 				w.WriteByte(2)
 				w.Flush()
-				targetPath := path.Join(currentDir + targetPath)
+				targetPath := path.Join(currentDir + "/" + targetPath)
 				fmt.Printf("Path \"%s\" is a directory\n", targetPath)
 				w.WriteString(targetPath + "\n")
 				w.Flush()

@@ -30,7 +30,7 @@ func main() {
 
 	var sendcode uint8
 
-	currentDir := ""
+	currentDir := "/"
 
 	//rootDir := mdservice.MkRoot()
 	//currentDir := rootDir
@@ -38,7 +38,7 @@ func main() {
 
 	for {
 		reader := bufio.NewReader(os.Stdin)
-		fmt.Print(user + ":/" + currentDir + " >> ")
+		fmt.Print(user + ":" + currentDir + " >> ")
 		cmd, _ := reader.ReadString('\n')
 		// remove trailing newline character before splitting
 		args := strings.Split(strings.TrimSpace(cmd), " ")
@@ -92,6 +92,10 @@ func main() {
 				panic(err)
 			}
 
+			// Send current dir
+			w.WriteString(currentDir + "\n")
+			w.Flush()
+
 			err = w.WriteByte(uint8(len(args)))
 			w.Flush()
 			if err != nil {
@@ -110,6 +114,10 @@ func main() {
 			if err != nil {
 				panic(err)
 			}
+
+			// Send current dir
+			w.WriteString(currentDir + "\n")
+			w.Flush()
 
 			err = w.WriteByte(uint8(len(args)))
 			w.Flush()
