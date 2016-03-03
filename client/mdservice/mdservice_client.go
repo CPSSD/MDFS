@@ -18,7 +18,7 @@ func main() {
 
 	// config will be read locally later
 	protocol := "tcp"
-	socket := "localhost:8081"
+	socket := "localhost:1994"
 	user := "jim"
 
 	conn, _ := net.Dial(protocol, socket)
@@ -56,6 +56,10 @@ func main() {
 				panic(err)
 			}
 
+			// Send current dir
+			w.WriteString(currentDir + "\n")
+			w.Flush()
+
 			err = w.WriteByte(uint8(len(args)))
 			w.Flush()
 			if err != nil {
@@ -70,6 +74,8 @@ func main() {
 			msg, _ := r.ReadString(' ')
 
 			files := strings.Split(msg, ",")
+
+			msg = strings.TrimSuffix(msg, "\n")
 
 			for n, file := range files {
 				if n != len(files)-1 {
@@ -116,11 +122,39 @@ func main() {
 				w.Flush()
 			}
 
-		case "pwd":
-			continue
-			//currentDir.Pwd(
-
 		case "cd":
+			sendcode = 4
+
+			if len(args) < 2 {
+				continue
+			}
+
+			err := w.WriteByte(sendcode)
+			w.Flush()
+			if err != nil {
+				panic(err)
+			}
+
+			// Send current dir
+			w.WriteString(currentDir + "\n")
+			w.Flush()
+
+			// Send required dir
+			w.WriteString(args[1] + "\n")
+			w.Flush()
+
+			isDir, _ := r.ReadByte()
+			if isDir == 1 {
+
+				fmt.Println("Not a directory")
+
+			} else {
+
+				currentDir, _ = r.ReadString('\n')
+				currentDir = strings.TrimSuffix(currentDir, "\n")
+
+			}
+
 			continue
 			/*
 				err, next := mdservice.Cd(currentDir, args[1])
@@ -129,6 +163,10 @@ func main() {
 				}
 				currentDir = next
 			*/
+
+		case "pwd":
+			continue
+			//currentDir.Pwd(
 
 		case "exit":
 			os.Exit(1)

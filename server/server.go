@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
+	"path"
 	"strings"
 )
 
@@ -114,41 +115,50 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 	case 1: // ls
 		fmt.Println("In ls")
 
+		currentDir, _ := r.ReadString('\n')
+		currentDir = strings.TrimSuffix(currentDir, "\n")
+
 		lenArgs, _ := r.ReadByte()
 		fmt.Printf("lenArgs = %v\n", lenArgs)
 
 		msg := ""
 
 		if lenArgs == 1 {
-			files, err := ioutil.ReadDir(md.getPath())
+			files, err := ioutil.ReadDir(md.getPath() + currentDir)
 			if err != nil {
-				panic(err)
+				w.Flush()
 			}
 
 			for _, file := range files {
-				msg = msg + "," + file.Name()
+				msg = msg + file.Name() + ","
 			}
+
 		}
 
 		for i := 1; i < int(lenArgs); i++ {
 			fmt.Printf("  in loop at pos %d ready to read\n", i)
 
-			path, _ := r.ReadString('\n')
-			path = strings.TrimSuffix(path, "\n")
+			targetPath, _ := r.ReadString('\n')
+			targetPath = strings.TrimSuffix(targetPath, "\n")
 
-			msg = msg + path + ":/"
+			fmt.Printf("  in loop read in targetPath: %s\n", (currentDir + targetPath))
 
-			fmt.Printf("  in loop read in path: %s", path)
-
-			files, err := ioutil.ReadDir(md.getPath() + path)
+			files, err := ioutil.ReadDir(md.getPath() + currentDir + targetPath)
 			if err != nil {
-				panic(err)
-			}
+				continue
+			} else {
 
-			for _, file := range files {
-				msg = msg + "," + file.Name()
+				msg = msg + targetPath + ":/,"
+
+				for _, file := range files {
+					msg = msg + file.Name() + ","
+				}
+
+				msg = msg + ","
 			}
 		}
+
+		msg = strings.TrimSuffix(msg, ",")
 
 		w.WriteString(msg + ", ")
 		w.Flush()
@@ -163,9 +173,9 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 
 		for i := 1; i < int(lenArgs); i++ {
 			fmt.Printf("  in loop at pos %d ready to read\n", i)
-			path, _ := r.ReadString('\n')
-			fmt.Printf("  in loop read in path: %s", path)
-			os.MkdirAll(md.getPath()+strings.TrimSpace(path), 0777)
+			targetPath, _ := r.ReadString('\n')
+			fmt.Printf("  in loop read in targetPath: %s", targetPath)
+			os.MkdirAll(md.getPath()+strings.TrimSpace(targetPath), 0777)
 		}
 		fmt.Println("Fin mkdir")
 
@@ -177,13 +187,51 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 
 		for i := 1; i < int(lenArgs); i++ {
 			fmt.Printf("  in loop at pos %d ready to read\n", i)
-			path, _ := r.ReadString('\n')
-			fmt.Printf("  in loop read in path: %s", path)
-			os.Remove(md.getPath() + "./" + strings.TrimSpace(path))
+			targetPath, _ := r.ReadString('\n')
+			fmt.Printf("  in loop read in targetPath: %s", targetPath)
+			os.Remove(md.getPath() + "./" + strings.TrimSpace(targetPath))
 		}
 		fmt.Println("Fin mkdir")
 
 	case 4: // cd
+		fmt.Println("In cd")
+
+		currentDir, _ := r.ReadString('\n')
+		currentDir = strings.TrimSuffix(currentDir, "\n")
+
+		fmt.Printf("currentDir = %s\n", currentDir)
+
+		targetPath, _ := r.ReadString('\n')
+		targetPath = strings.TrimSuffix(targetPath, "\n")
+
+		fmt.Printf("targetPath = %s\n", targetPath)
+
+		targetPath = strings.TrimPrefix(targetPath, "/")
+		targetPath = strings.TrimSuffix(targetPath, "/")
+
+		// check if the source dir exist
+		src, err := os.Stat(md.getPath() + currentDir + "/" + targetPath)
+		if err != nil {
+			fmt.Println("Path is not a directory")
+			w.WriteByte(1)
+			w.Flush()
+		} else {
+
+			// check if the source is indeed a directory or not
+			if !src.IsDir() {
+				fmt.Println("Path is not a directory")
+				w.WriteByte(1)
+				w.Flush()
+			} else {
+				w.WriteByte(2)
+				w.Flush()
+				targetPath := path.Join(currentDir + targetPath)
+				fmt.Printf("Path \"%s\" is a directory\n", targetPath)
+				w.WriteString(targetPath + "\n")
+				w.Flush()
+			}
+		}
+
 	case 5: // send
 	case 6: // request
 	}
