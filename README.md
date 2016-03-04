@@ -12,20 +12,32 @@ Before testing, run the entire setup using ``go run testing_files/testing_init.g
 Before you begin, setup the storage node using ``go run storagenode/config/stnode_init.go``. This will create the necessary folder structure ``$HOME/.stnode/``. The server's configuration files will be copied to ``$HOME/.stndode/stnode_conf.json``.
 
 ### Metadata Service
-Setup the metadata service using ``go run mdservice/config/mdservice_init.go``. This does not do anything at the moment.
+Setup the metadata service using ``go run mdservice/config/mdservice_init.go``. This establishes a folder to store files for the mdservice itself at ``$HOME/.mdservice/files``. The mdservice's config files are stored under ``$HOME/.mdservice/mdservice_conf.json``.
 
 ## Usage
 ### Run the storage node
 The storage node server can then be run
 ```bash
-go run storagenode/server.go
+go run storagenode/stnode.go
+```
+
+### Run the metadata service
+The metadata service can then be run as follows
+```bash
+go run mdservice/mdservice.go
+```
+
+### Run the client software
+The client software is run as follows for the mdservice
+```bash
+go run client/mdservice/mdservice_client.go
 ```
 
 ### Request a file
 Request a file using the flag `-request={hex representation of hash}`
 
 ```
-go run client/stnode/client.go -request=6f5902ac237024bdd0c176cb93063dc4
+go run client/stnode/stnode_client.go -request=6f5902ac237024bdd0c176cb93063dc4
 ```
 
 File can then be found in /path/to/files/output
@@ -34,7 +46,7 @@ File can then be found in /path/to/files/output
 Send a file using the flag `-send={path to file}`
 
 ```
-go run client/stnode/client.go -send=/path/to/files/test.jpg
+go run client/stnode/stnode_client.go -send=/path/to/files/test.jpg
 ```
 
 File will be stored in the configured storage location in the json file (/path/to/files/ by default).
@@ -48,5 +60,6 @@ cd
 pwd
 ls
 mkdir
+rmdir
 exit
 ```
