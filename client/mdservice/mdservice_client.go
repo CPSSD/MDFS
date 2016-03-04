@@ -67,7 +67,7 @@ func main() {
 			}
 
 			for i := 1; i < len(args); i++ {
-				w.WriteString(currentDir + args[i] + "\n")
+				w.WriteString(args[i] + "\n")
 				w.Flush()
 			}
 
@@ -173,8 +173,10 @@ func main() {
 			*/
 
 		case "pwd":
+
+			fmt.Print(currentDir + "\n")
+
 			continue
-			//currentDir.Pwd(
 
 		case "exit":
 			os.Exit(1)

@@ -143,7 +143,7 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 
 			fmt.Printf("  in loop read in targetPath: %s\n", (currentDir + targetPath))
 
-			files, err := ioutil.ReadDir(md.getPath() + currentDir + targetPath)
+			files, err := ioutil.ReadDir(md.getPath() + currentDir + "/" + targetPath)
 			if err != nil {
 				continue
 			} else {
@@ -178,7 +178,7 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 			fmt.Printf("  in loop at pos %d ready to read\n", i)
 			targetPath, _ := r.ReadString('\n')
 			fmt.Printf("  in loop read in targetPath: %s", targetPath)
-			os.MkdirAll(md.getPath()+currentDir+strings.TrimSpace(targetPath), 0777)
+			os.MkdirAll(md.getPath()+currentDir+"/"+strings.TrimSpace(targetPath), 0777)
 		}
 		fmt.Println("Fin mkdir")
 
