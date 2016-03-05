@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"github.com/CPSSD/MDFS/config"
 	"github.com/CPSSD/MDFS/utils"
+	"github.com/boltdb/bolt"
 	"io"
 	"io/ioutil"
 	"net"
 	"os"
 	"path"
+	"reflect"
 	"strings"
 )
 
@@ -360,6 +362,17 @@ func Start(in TCPServer) {
 	protocol := in.getProtocol()
 	host := in.getHost()
 	port := in.getPort()
+
+	// init the boltdb if it is not existant already
+	// one for users, one for stnodes
+	if reflect.TypeOf(in).String() == "*server.MDService" {
+		fmt.Println("This is a metadata service, opening DB's")
+		db, err := bolt.Open("my.db", 0777, nil)
+		if err != nil {
+			panic(err)
+		}
+		defer db.Close()
+	}
 
 	// listen on specified interface & port
 	ln, err := net.Listen(protocol, host+":"+port)

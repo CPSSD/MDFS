@@ -206,16 +206,40 @@ func main() {
 			}
 
 		case "pwd":
-
 			// no calls to server, just print what we have stored here
 			fmt.Print(currentDir + "\n")
 
 		case "exit":
-
 			// leave the program. The server will notice that the client has
 			// disconnected and will close the TCP connection on its side
 			// without error.
 			os.Exit(1)
+
+		case "send":
+			// START SENDCODE BLOCK
+			sendcode = 5
+
+			err := w.WriteByte(sendcode)
+			w.Flush()
+			if err != nil {
+				panic(err)
+			}
+			// END SENDCODE BLOCK
+			w
+			fmt.Printf("Send the file\n")
+
+		case "request":
+			// START SENDCODE BLOCK
+			sendcode = 6
+
+			err := w.WriteByte(sendcode)
+			w.Flush()
+			if err != nil {
+				panic(err)
+			}
+			// END SENDCODE BLOCK
+
+			fmt.Printf("Request the file\n")
 
 		default:
 
