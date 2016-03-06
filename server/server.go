@@ -12,7 +12,6 @@ import (
 	"net"
 	"os"
 	"path"
-	"reflect"
 	"strings"
 )
 
@@ -33,6 +32,7 @@ type MDService struct {
 // the Server interface
 type TCPServer interface {
 	parseConfig()
+	setup()
 	getPath() string
 	getProtocol() string
 	getPort() string
@@ -63,6 +63,28 @@ func (st *StorageNode) parseConfig() {
 
 func (md *MDService) parseConfig() {
 	md.conf = config.ParseConfiguration(utils.GetUserHome() + "/.mdservice/.mdservice_conf.json")
+}
+
+func (st StorageNode) setup() {
+
+}
+
+func (md MDService) setup() {
+
+	// init the boltdb if it is not existant already
+	// one for users, one for stnodes
+	fmt.Println("This is a metadata service, opening DB's")
+	userDB, err := bolt.Open(md.getPath()+".userDB.db", 0777, nil)
+	if err != nil {
+		panic(err)
+	}
+	defer userDB.Close()
+
+	stnodeDB, err := bolt.Open(md.getPath()+".stnodeDB.db", 0777, nil)
+	if err != nil {
+		panic(err)
+	}
+	defer stnodeDB.Close()
 }
 
 // checks request code and calls corresponding function
@@ -365,22 +387,8 @@ func Start(in TCPServer) {
 	host := in.getHost()
 	port := in.getPort()
 
-	// init the boltdb if it is not existant already
-	// one for users, one for stnodes
-	if reflect.TypeOf(in).String() == "*server.MDService" {
-		fmt.Println("This is a metadata service, opening DB's")
-		userDB, err := bolt.Open(in.getPath()+".userDB.db", 0777, nil)
-		if err != nil {
-			panic(err)
-		}
-		defer userDB.Close()
-
-		stnodeDB, err := bolt.Open(in.getPath()+".stnodeDB.db", 0777, nil)
-		if err != nil {
-			panic(err)
-		}
-		defer stnodeDB.Close()
-	}
+	// mdservice would initialise database here
+	in.setup()
 
 	// listen on specified interface & port
 	ln, err := net.Listen(protocol, host+":"+port)
