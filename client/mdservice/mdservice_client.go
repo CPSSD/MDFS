@@ -9,9 +9,9 @@ import (
 	"strings"
 )
 
-func setup() (err error) {
-	src, err := os.Stat(utils.GetUserHome() + "/.client/.user.json")
-	if err != nil { // not exist
+func setup(w *bufio.Writer, thisUser *utils.User) (err error) {
+	_, exists := os.Stat(utils.GetUserHome() + "/.client/.user_conf.json")
+	if exists != nil { // not exist
 
 		// Make sure the local user dir exists
 		err := os.MkdirAll(utils.GetUserHome()+"/.client/", 0777)
@@ -20,13 +20,14 @@ func setup() (err error) {
 		}
 
 		// Create the user config file
-		fo, err := os.Create(utils.GetUserHome()+"/.client/.user_conf.json", 0777)
+		fo, err := os.Create(utils.GetUserHome() + "/.client/.user_conf.json")
 		if err != nil {
 			panic(err)
 		}
+		defer fo.Close()
 
 		// notify mdservice that this is a new user (SENDCODE 10)
-		err := w.WriteByte(10) //
+		err = w.WriteByte(10) //
 		if err != nil {
 			panic(err)
 		}
@@ -47,6 +48,8 @@ func setup() (err error) {
 	} else {
 
 	}
+
+	return err
 
 	// if none exist, will send a code to mdserv to notify as new user,
 	// and get a uuid, create userkeys, send pubkey to mdserv
@@ -81,13 +84,14 @@ func main() {
 	// and private key of this user will be locally accessible when
 	// needed by the user client in a location defined in the
 	// setup method.
-	err := setup()
+	err := setup(w, &thisUser)
 	if err != nil {
 		panic(err)
 	}
 
 	// assume we will always start in the root directory (for safety)
 	currentDir := "/"
+	reader := bufio.NewReader(os.Stdin)
 
 	// NOTE: after commenting, I have noticed definite code duplication with regards
 	// to sending the args for a command and sending the sendcode as well. On the server
@@ -95,11 +99,6 @@ func main() {
 	// NOTE: once methods on server side to do with send/request are implemented, comms
 	// with the storage node can be brought in from the stnode_client.
 	for {
-
-		// get a new reader, perhaps shouldn't do this everytime, although maybe
-		// this will stop user commands from being entered while waiting for results
-		// of commands from the mdservice which could be a good thing.
-		reader := bufio.NewReader(os.Stdin)
 
 		// print the user's command prompt
 		fmt.Print(user + ":" + currentDir + " >> ")
@@ -119,154 +118,27 @@ func main() {
 			continue
 
 		case "ls":
-			// START SENDCODE BLOCK
-			sendcode = 1
-
-			err := w.WriteByte(sendcode)
-			w.Flush()
+			err := ls(r, w, currentDir, args)
 			if err != nil {
 				panic(err)
-			}
-			// END SENDCODE BLOCK
-
-			// Send current dir
-			w.WriteString(currentDir + "\n")
-			w.Flush()
-
-			// send the length of args
-			err = w.WriteByte(uint8(len(args)))
-			w.Flush()
-			if err != nil {
-				panic(err)
-			}
-
-			// write each arg (if there are any) seperately so that the server
-			// can deal with them as per it's loop
-			for i := 1; i < len(args); i++ {
-
-				// simple sending of args
-				w.WriteString(args[i] + "\n")
-				w.Flush()
-			}
-
-			// read to whitespace? Check corresponding write on the server side
-			msg, _ := r.ReadString(' ')
-
-			// split results by commas
-			files := strings.Split(msg, ",")
-
-			// remove the last newline
-			msg = strings.TrimSuffix(msg, "\n")
-
-			// iterate over each result of the comma separated msg
-			for n, file := range files {
-
-				// don't print the last one? this is hacky code, needs cleaning on
-				// both client and server side, make sure to test changes so as not
-				// to break pieces
-				if n != len(files)-1 {
-
-					// newline for each piece of the result
-					fmt.Println(file)
-				}
 			}
 
 		case "mkdir":
-			// START SENDCODE BLOCK
-			sendcode = 2
-
-			err := w.WriteByte(sendcode)
-			w.Flush()
+			err := mkdir(w, currentDir, args)
 			if err != nil {
 				panic(err)
-			}
-			// END SENDCODE BLOCK
-
-			// Send current dir
-			w.WriteString(currentDir + "\n")
-			w.Flush()
-
-			// send len args for mkdir
-			err = w.WriteByte(uint8(len(args)))
-			w.Flush()
-			if err != nil {
-				panic(err)
-			}
-
-			// send each arg (if it exists)
-			for i := 1; i < len(args); i++ {
-
-				w.WriteString(args[i] + "\n")
-				w.Flush()
 			}
 
 		case "rmdir":
-			// START SENDCODE BLOCK
-			sendcode = 3
-
-			err := w.WriteByte(sendcode)
-			w.Flush()
+			err := rmdir(r, w, currentDir, args)
 			if err != nil {
 				panic(err)
-			}
-			// END SENDCODE BLOCK
-
-			// Send current dir
-			w.WriteString(currentDir + "\n")
-			w.Flush()
-
-			// send len args
-			err = w.WriteByte(uint8(len(args)))
-			w.Flush()
-			if err != nil {
-				panic(err)
-			}
-
-			// send each arg (if it exists)
-			for i := 1; i < len(args); i++ {
-
-				w.WriteString(args[i] + "\n")
-				w.Flush()
 			}
 
 		case "cd":
-			// START SENDCODE BLOCK
-			sendcode = 4
-
-			// if the cmd is just "cd", no point telling the server as
-			// the result will be no change made to currentDir
-			// NOTE: here we do not send more than the first arg as any
-			// more than one arg has no effect on results of a cd.
-			if len(args) < 2 {
-				continue
-			}
-
-			err := w.WriteByte(sendcode)
-			w.Flush()
+			err := cd(r, w, &currentDir, args)
 			if err != nil {
 				panic(err)
-			}
-			// END SENDCODE BLOCK
-
-			// Send current dir
-			w.WriteString(currentDir + "\n")
-			w.Flush()
-
-			// Send target dir
-			w.WriteString(args[1] + "\n")
-			w.Flush()
-
-			// get response from server if is a dir
-			isDir, _ := r.ReadByte()
-			if isDir == 1 {
-
-				fmt.Println("Not a directory")
-
-			} else { // success!
-
-				// get the new currentDir and clean up the end
-				currentDir, _ = r.ReadString('\n')
-				currentDir = strings.TrimSuffix(currentDir, "\n")
 			}
 
 		case "pwd":
@@ -322,4 +194,165 @@ func main() {
 			fmt.Println("Unrecognised command")
 		}
 	}
+}
+
+func ls(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string) (err error) {
+
+	// START SENDCODE BLOCK
+	err = w.WriteByte(1)
+	w.Flush()
+	if err != nil {
+		panic(err)
+	}
+	// END SENDCODE BLOCK
+
+	// Send current dir
+	w.WriteString(currentDir + "\n")
+	w.Flush()
+
+	// send the length of args
+	err = w.WriteByte(uint8(len(args)))
+	w.Flush()
+	if err != nil {
+		panic(err)
+	}
+
+	// write each arg (if there are any) seperately so that the server
+	// can deal with them as per it's loop
+	for i := 1; i < len(args); i++ {
+
+		// simple sending of args
+		w.WriteString(args[i] + "\n")
+		w.Flush()
+	}
+
+	// read to whitespace? Check corresponding write on the server side
+	msg, _ := r.ReadString(' ')
+
+	// split results by commas
+	files := strings.Split(msg, ",")
+
+	// remove the last newline
+	msg = strings.TrimSuffix(msg, "\n")
+
+	// iterate over each result of the comma separated msg
+	for n, file := range files {
+
+		// don't print the last one? this is hacky code, needs cleaning on
+		// both client and server side, make sure to test changes so as not
+		// to break pieces
+		if n != len(files)-1 {
+
+			// newline for each piece of the result
+			fmt.Println(file)
+		}
+	}
+
+	return err
+
+}
+
+func mkdir(w *bufio.Writer, currentDir string, args []string) (err error) {
+
+	// START SENDCODE BLOCK
+	err = w.WriteByte(2)
+	w.Flush()
+	if err != nil {
+		panic(err)
+	}
+	// END SENDCODE BLOCK
+
+	// Send current dir
+	w.WriteString(currentDir + "\n")
+	w.Flush()
+
+	// send len args for mkdir
+	err = w.WriteByte(uint8(len(args)))
+	w.Flush()
+	if err != nil {
+		panic(err)
+	}
+
+	// send each arg (if it exists)
+	for i := 1; i < len(args); i++ {
+
+		w.WriteString(args[i] + "\n")
+		w.Flush()
+	}
+
+	return err
+}
+
+func rmdir(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string) (err error) {
+
+	// START SENDCODE BLOCK
+	err = w.WriteByte(3)
+	w.Flush()
+	if err != nil {
+		panic(err)
+	}
+	// END SENDCODE BLOCK
+
+	// Send current dir
+	w.WriteString(currentDir + "\n")
+	w.Flush()
+
+	// send len args
+	err = w.WriteByte(uint8(len(args)))
+	w.Flush()
+	if err != nil {
+		panic(err)
+	}
+
+	// send each arg (if it exists)
+	for i := 1; i < len(args); i++ {
+
+		w.WriteString(args[i] + "\n")
+		w.Flush()
+	}
+
+	return err
+}
+
+func cd(r *bufio.Reader, w *bufio.Writer, currentDir *string, args []string) (err error) {
+
+	// START SENDCODE BLOCK
+
+	// if the cmd is just "cd", no point telling the server as
+	// the result will be no change made to currentDir
+	// NOTE: here we do not send more than the first arg as any
+	// more than one arg has no effect on results of a cd.
+	if len(args) < 2 {
+		return err
+	}
+
+	err = w.WriteByte(4)
+	w.Flush()
+	if err != nil {
+		panic(err)
+	}
+	// END SENDCODE BLOCK
+
+	// Send current dir
+	w.WriteString(*currentDir + "\n")
+	w.Flush()
+
+	// Send target dir
+	w.WriteString(args[1] + "\n")
+	w.Flush()
+
+	// get response from server if is a dir
+	isDir, _ := r.ReadByte()
+	if isDir == 1 {
+
+		fmt.Println("Not a directory")
+
+	} else { // success!
+
+		// get the new currentDir and clean up the end
+		*currentDir, _ = r.ReadString('\n')
+		*currentDir = strings.TrimSuffix(*currentDir, "\n")
+	}
+
+	return err
 }

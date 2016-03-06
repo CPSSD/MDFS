@@ -158,6 +158,8 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 		// comma separated for the client to interpret
 		msg := ""
 
+		alpha := md.getPath() + "files" + currentDir
+
 		// if only the ls command was called
 		if lenArgs == 1 {
 
@@ -174,7 +176,10 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 			// client side (if possible, not sure if it is or not), perhaps failsafe and
 			// return user to home ("/"), or maybe accept that deletions of dirs will
 			// likely not occurr when demoing
-			files, err := ioutil.ReadDir(md.getPath() + "files/" + currentDir)
+
+			fmt.Println(alpha)
+
+			files, err := ioutil.ReadDir(alpha)
 			if err != nil {
 				w.Flush()
 			}
@@ -201,7 +206,7 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 			// or "ls ./dir" etc. ReadDir() does not mind extra "/"s. "ls /dir" and "ls ./dir"
 			// currently evaluate to the same thing as they are both prepended by currentDir
 			// below, possibly viewed as a bug because it is not identical to UNIX ls.
-			files, err := ioutil.ReadDir(md.getPath() + "files/" + currentDir + "/" + targetPath)
+			files, err := ioutil.ReadDir(md.getPath() + "files" + currentDir + "/" + targetPath)
 			if err != nil {
 
 				// if it is not a directory, skip it and try the next arg
@@ -269,7 +274,7 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 			fmt.Printf("  in loop read in targetPath: %s", targetPath)
 
 			// MkdirAll creates an entire file path if some dirs are missing
-			os.MkdirAll(md.getPath()+"files/"+currentDir+"/"+strings.TrimSpace(targetPath), 0777)
+			os.MkdirAll(md.getPath()+"files"+currentDir+"/"+strings.TrimSpace(targetPath), 0777)
 		}
 
 		// end of mkdir
@@ -301,7 +306,7 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 			// a path is a dir or a file is found in "cd" below).
 			// NOTE: a nice to have would be a recursive remove similar to rm -rf,
 			// but this is not needed
-			os.Remove(md.getPath() + "files/" + currentDir + "/" + strings.TrimSpace(targetPath))
+			os.Remove(md.getPath() + "files" + currentDir + "/" + strings.TrimSpace(targetPath))
 		}
 
 		// end of rmdir
@@ -330,7 +335,7 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 		targetPath = strings.TrimSuffix(targetPath, "/")
 
 		// check if the source dir exist
-		src, err := os.Stat(md.getPath() + "files/" + currentDir + "/" + targetPath)
+		src, err := os.Stat(md.getPath() + "files" + currentDir + "/" + targetPath)
 		if err != nil { // not a path ie. not a dir OR a file
 
 			fmt.Println("Path is not a directory")
