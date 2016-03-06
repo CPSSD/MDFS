@@ -6,42 +6,53 @@ import (
 	"github.com/CPSSD/MDFS/utils"
 	"net"
 	"os"
+	"strconv"
 	"strings"
 )
 
-func setup(w *bufio.Writer, thisUser *utils.User) (err error) {
-	_, exists := os.Stat(utils.GetUserHome() + "/.client/.user_conf.json")
+func setup(r *bufio.Reader, w *bufio.Writer, thisUser *utils.User) (err error) {
+	_, exists := os.Stat(utils.GetUserHome() + "/.client/.user_data")
 	if exists != nil { // not exist
 
 		// Make sure the local user dir exists
 		err := os.MkdirAll(utils.GetUserHome()+"/.client/", 0777)
 		if err != nil {
-			panic(err)
+			return err
 		}
-
-		// Create the user config file
-		fo, err := os.Create(utils.GetUserHome() + "/.client/.user_conf.json")
-		if err != nil {
-			panic(err)
-		}
-		defer fo.Close()
 
 		// notify mdservice that this is a new user (SENDCODE 10)
 		err = w.WriteByte(10) //
 		if err != nil {
-			panic(err)
+			return err
 		}
 		w.Flush()
 
+		// local user setup
 		utils.GenUserKeys(utils.GetUserHome() + "/.client/.private_key")
 
 		err = utils.FileToStruct(utils.GetUserHome()+"/.client/.private_key", &thisUser.Privkey)
 		if err != nil {
-			panic(err)
+			return err
 		}
 		thisUser.Pubkey = &thisUser.Privkey.PublicKey
 
-		// send the user's publicKey
+		err = utils.StructToFile(*thisUser.Pubkey, os.TempDir()+".mdfs_client_public_key")
+		if err != nil {
+			return err
+		}
+
+		utils.SendFile(nil, w, os.TempDir()+".mdfs_client_public_key")
+
+		uuid, _ := r.ReadString('\n')
+		thisUser.Uuid, err = strconv.ParseUint(strings.TrimSpace(uuid), 10, 64)
+		if err != nil {
+			return err
+		}
+
+		err = utils.StructToFile(*thisUser, utils.GetUserHome()+"/.client/.user_data")
+		if err != nil {
+			return err
+		}
 
 		//NOTE: NOT COMPLETE
 
@@ -84,7 +95,7 @@ func main() {
 	// and private key of this user will be locally accessible when
 	// needed by the user client in a location defined in the
 	// setup method.
-	err := setup(w, &thisUser)
+	err := setup(r, w, &thisUser)
 	if err != nil {
 		panic(err)
 	}

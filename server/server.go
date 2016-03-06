@@ -158,8 +158,6 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 		// comma separated for the client to interpret
 		msg := ""
 
-		alpha := md.getPath() + "files" + currentDir
-
 		// if only the ls command was called
 		if lenArgs == 1 {
 
@@ -177,9 +175,9 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 			// return user to home ("/"), or maybe accept that deletions of dirs will
 			// likely not occurr when demoing
 
-			fmt.Println(alpha)
+			fmt.Println(md.getPath() + "files" + currentDir)
 
-			files, err := ioutil.ReadDir(alpha)
+			files, err := ioutil.ReadDir(md.getPath() + "files" + currentDir)
 			if err != nil {
 				w.Flush()
 			}
@@ -377,6 +375,10 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 
 	case 5: // request
 	case 6: // send
+
+	case 10: // setup new user
+
+		// needs implementation to mirror the client function
 
 	}
 }
