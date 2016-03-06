@@ -348,8 +348,8 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 		// the client which storage node to use, where to access files, sending public
 		// keys, permissions, etc.
 
-	case 5: // send
-	case 6: // request
+	case 5: // request
+	case 6: // send
 
 	}
 }
@@ -364,23 +364,6 @@ func Start(in TCPServer) {
 	protocol := in.getProtocol()
 	host := in.getHost()
 	port := in.getPort()
-
-	// init the boltdb if it is not existant already
-	// one for users, one for stnodes
-	if reflect.TypeOf(in).String() == "*server.MDService" {
-		fmt.Println("This is a metadata service, opening DB's")
-		userDB, err := bolt.Open(in.getPath()+".userDB.db", 0777, nil)
-		if err != nil {
-			panic(err)
-		}
-		defer userDB.Close()
-
-		stnodeDB, err := bolt.Open(in.getPath()+".stnodeDB.db", 0777, nil)
-		if err != nil {
-			panic(err)
-		}
-		defer stnodeDB.Close()
-	}
 
 	// listen on specified interface & port
 	ln, err := net.Listen(protocol, host+":"+port)

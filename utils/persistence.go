@@ -12,6 +12,13 @@ type User struct {
 	Privkey *rsa.PrivateKey
 }
 
+type FileDesc struct {
+	Owner       uint64
+	Permissions uint16
+	Hash        []byte
+	Stnodes     []uint64
+}
+
 func StructToFile(e interface{}, filename string) (err error) {
 	fileout, err := os.Create(filename)
 	if err != nil {

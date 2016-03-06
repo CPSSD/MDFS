@@ -3,17 +3,67 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"github.com/CPSSD/MDFS/utils"
 	"net"
 	"os"
 	"strings"
 )
+
+func setup() (err error) {
+	src, err := os.Stat(utils.GetUserHome() + "/.client/.user.json")
+	if err != nil { // not exist
+
+		// Make sure the local user dir exists
+		err := os.MkdirAll(utils.GetUserHome()+"/.client/", 0777)
+		if err != nil {
+			panic(err)
+		}
+
+		// Create the user config file
+		fo, err := os.Create(utils.GetUserHome()+"/.client/.user_conf.json", 0777)
+		if err != nil {
+			panic(err)
+		}
+
+		// notify mdservice that this is a new user (SENDCODE 10)
+		err := w.WriteByte(10) //
+		if err != nil {
+			panic(err)
+		}
+		w.Flush()
+
+		utils.GenUserKeys(utils.GetUserHome() + "/.client/.private_key")
+
+		err = utils.FileToStruct(utils.GetUserHome()+"/.client/.private_key", &thisUser.Privkey)
+		if err != nil {
+			panic(err)
+		}
+		thisUser.Pubkey = &thisUser.Privkey.PublicKey
+
+		// send the user's publicKey
+
+		//NOTE: NOT COMPLETE
+
+	} else {
+
+	}
+
+	// if none exist, will send a code to mdserv to notify as new user,
+	// and get a uuid, create userkeys, send pubkey to mdserv
+
+}
 
 func main() {
 
 	// config will be read locally later
 	protocol := "tcp"
 	socket := "localhost:1994"
+
 	user := "jim"
+
+	// will be filled out in setup, contents of User struct
+	// may change slightly to include extra data
+	var thisUser utils.User
 
 	conn, _ := net.Dial(protocol, socket)
 	defer conn.Close()
@@ -23,6 +73,18 @@ func main() {
 	w := bufio.NewWriter(conn)
 
 	var sendcode uint8
+
+	// run setup of user.
+	// will register with mdservice to get new uuid if a local
+	// user file does not exist, and send the user's public key
+	// to the mdservice as part of it's registration. The public
+	// and private key of this user will be locally accessible when
+	// needed by the user client in a location defined in the
+	// setup method.
+	err := setup()
+	if err != nil {
+		panic(err)
+	}
 
 	// assume we will always start in the root directory (for safety)
 	currentDir := "/"
@@ -49,6 +111,8 @@ func main() {
 		//														 comment before Jacob
 
 		args := strings.Split(strings.TrimSpace(cmd), " ")
+
+		// NOTE: WILL BE PUSHING CASES TO METHODS
 
 		switch args[0] {
 		case "":
@@ -215,7 +279,7 @@ func main() {
 			// without error.
 			os.Exit(1)
 
-		case "send":
+		case "request":
 			// START SENDCODE BLOCK
 			sendcode = 5
 
@@ -226,9 +290,9 @@ func main() {
 			}
 			// END SENDCODE BLOCK
 
-			fmt.Printf("Send the file\n")
+			fmt.Printf("Request the file\n")
 
-		case "request":
+		case "send":
 			// START SENDCODE BLOCK
 			sendcode = 6
 
@@ -239,7 +303,18 @@ func main() {
 			}
 			// END SENDCODE BLOCK
 
-			fmt.Printf("Request the file\n")
+			// Send filename to mdserv
+
+			// Get fail if file exists already
+
+			// Get the unid of a storage node if file not exists
+
+			// attempt to send the file (as per stnode_client)
+			// INSERT CODE HERE
+
+			// Send success/fail to mdserv to log the file send or not
+
+			// on failure to send a file, print err
 
 		default:
 
