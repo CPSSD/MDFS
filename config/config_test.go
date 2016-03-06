@@ -12,7 +12,7 @@ func TestConfig(t *testing.T) {
 		filename, protocol, host, port, path string
 	}{
 		{utils.GetUserHome() + "/.stnode/stnode_conf.json", "tcp", "localhost", "8081", utils.GetUserHome() + "/.stnode/"},
-		{utils.GetUserHome() + "/.mdservice/.mdservice_conf.json", "tcp", "localhost", "1994", utils.GetUserHome() + "/.mdservice/files/"},
+		{utils.GetUserHome() + "/.mdservice/.mdservice_conf.json", "tcp", "localhost", "1994", utils.GetUserHome() + "/.mdservice/"},
 	}
 	for _, c := range tests {
 		got := config.ParseConfiguration(c.filename)

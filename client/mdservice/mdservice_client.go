@@ -225,7 +225,7 @@ func main() {
 				panic(err)
 			}
 			// END SENDCODE BLOCK
-			w
+
 			fmt.Printf("Send the file\n")
 
 		case "request":

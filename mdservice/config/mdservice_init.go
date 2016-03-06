@@ -24,7 +24,7 @@ func main() {
 	}
 
 	conf := config.ParseConfiguration("./mdservice/config/mdservice_conf.json")
-	conf.Path = utils.GetUserHome() + "/.mdservice/files/"
+	conf.Path = utils.GetUserHome() + "/.mdservice/"
 
 	encoder := json.NewEncoder(fo)
 

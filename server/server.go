@@ -25,7 +25,9 @@ type StorageNode struct {
 }
 
 type MDService struct {
-	Server // anonymous field of type Server
+	userDB   bolt.DB
+	stnodeDB bolt.DB
+	Server   // anonymous field of type Server
 }
 
 // the Server interface
@@ -137,7 +139,7 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 		// if only the ls command was called
 		if lenArgs == 1 {
 
-			// md.getPath() == $HOME/.mdservice/files
+			// md.getPath() == $HOME/.mdservice/
 			// NOTE: currentDir should always start with a "/" and end in a normal char,
 			// ie. not a "/". Following this convention avoids occurrences of double
 			// slashes, missing slashes etc.
@@ -150,7 +152,7 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 			// client side (if possible, not sure if it is or not), perhaps failsafe and
 			// return user to home ("/"), or maybe accept that deletions of dirs will
 			// likely not occurr when demoing
-			files, err := ioutil.ReadDir(md.getPath() + currentDir)
+			files, err := ioutil.ReadDir(md.getPath() + "files/" + currentDir)
 			if err != nil {
 				w.Flush()
 			}
@@ -177,7 +179,7 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 			// or "ls ./dir" etc. ReadDir() does not mind extra "/"s. "ls /dir" and "ls ./dir"
 			// currently evaluate to the same thing as they are both prepended by currentDir
 			// below, possibly viewed as a bug because it is not identical to UNIX ls.
-			files, err := ioutil.ReadDir(md.getPath() + currentDir + "/" + targetPath)
+			files, err := ioutil.ReadDir(md.getPath() + "files/" + currentDir + "/" + targetPath)
 			if err != nil {
 
 				// if it is not a directory, skip it and try the next arg
@@ -245,7 +247,7 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 			fmt.Printf("  in loop read in targetPath: %s", targetPath)
 
 			// MkdirAll creates an entire file path if some dirs are missing
-			os.MkdirAll(md.getPath()+currentDir+"/"+strings.TrimSpace(targetPath), 0777)
+			os.MkdirAll(md.getPath()+"files/"+currentDir+"/"+strings.TrimSpace(targetPath), 0777)
 		}
 
 		// end of mkdir
@@ -277,7 +279,7 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 			// a path is a dir or a file is found in "cd" below).
 			// NOTE: a nice to have would be a recursive remove similar to rm -rf,
 			// but this is not needed
-			os.Remove(md.getPath() + currentDir + "/" + strings.TrimSpace(targetPath))
+			os.Remove(md.getPath() + "files/" + currentDir + "/" + strings.TrimSpace(targetPath))
 		}
 
 		// end of rmdir
@@ -306,7 +308,7 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 		targetPath = strings.TrimSuffix(targetPath, "/")
 
 		// check if the source dir exist
-		src, err := os.Stat(md.getPath() + currentDir + "/" + targetPath)
+		src, err := os.Stat(md.getPath() + "files/" + currentDir + "/" + targetPath)
 		if err != nil { // not a path ie. not a dir OR a file
 
 			fmt.Println("Path is not a directory")
@@ -367,11 +369,17 @@ func Start(in TCPServer) {
 	// one for users, one for stnodes
 	if reflect.TypeOf(in).String() == "*server.MDService" {
 		fmt.Println("This is a metadata service, opening DB's")
-		db, err := bolt.Open("my.db", 0777, nil)
+		userDB, err := bolt.Open(in.getPath()+".userDB.db", 0777, nil)
 		if err != nil {
 			panic(err)
 		}
-		defer db.Close()
+		defer userDB.Close()
+
+		stnodeDB, err := bolt.Open(in.getPath()+".stnodeDB.db", 0777, nil)
+		if err != nil {
+			panic(err)
+		}
+		defer stnodeDB.Close()
 	}
 
 	// listen on specified interface & port
