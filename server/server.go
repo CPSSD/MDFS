@@ -33,6 +33,7 @@ type MDService struct {
 type TCPServer interface {
 	parseConfig()
 	setup()
+	finish()
 	getPath() string
 	getProtocol() string
 	getPort() string
@@ -78,13 +79,23 @@ func (md MDService) setup() {
 	if err != nil {
 		panic(err)
 	}
-	defer userDB.Close()
+	// defer userDB.Close()
 
 	stnodeDB, err := bolt.Open(md.getPath()+".stnodeDB.db", 0777, nil)
 	if err != nil {
 		panic(err)
 	}
-	defer stnodeDB.Close()
+	// defer stnodeDB.Close()
+}
+
+func (st StorageNode) finish() {
+
+}
+
+func (md MDService) finish() {
+
+	md.userDB.Close()
+	md.stnodeDB.Close()
 }
 
 // checks request code and calls corresponding function
@@ -396,6 +407,7 @@ func Start(in TCPServer) {
 
 	// mdservice would initialise database here
 	in.setup()
+	defer in.finish()
 
 	// listen on specified interface & port
 	ln, err := net.Listen(protocol, host+":"+port)
@@ -420,6 +432,9 @@ func Start(in TCPServer) {
 		// handle connection in new goroutine
 		go handleRequest(conn, in)
 	}
+
+	// mdservice closes db here etc
+	in.finish()
 }
 
 func handleRequest(conn net.Conn, in TCPServer) {
