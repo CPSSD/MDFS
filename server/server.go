@@ -36,6 +36,7 @@ type MDService struct {
 type TCPServer interface {
 	parseConfig()
 	setup()
+	finish()
 	getPath() string
 	getProtocol() string
 	getPort() string
@@ -81,7 +82,8 @@ func (md MDService) setup() {
 	if err != nil {
 		panic(err)
 	}
-	defer UserDB.Close()
+
+	// defer userDB.Close()
 
 	UserDB.Update(func(tx *bolt.Tx) error {
 		_, err := tx.CreateBucketIfNotExists([]byte("users"))
@@ -95,7 +97,17 @@ func (md MDService) setup() {
 	if err != nil {
 		panic(err)
 	}
-	defer StnodeDB.Close()
+	// defer stnodeDB.Close()
+}
+
+func (st StorageNode) finish() {
+
+}
+
+func (md MDService) finish() {
+
+	md.userDB.Close()
+	md.stnodeDB.Close()
 }
 
 // checks request code and calls corresponding function
@@ -453,6 +465,7 @@ func Start(in TCPServer) {
 
 	// mdservice would initialise database here
 	in.setup()
+	defer in.finish()
 
 	// listen on specified interface & port
 	ln, err := net.Listen(protocol, host+":"+port)
@@ -477,6 +490,9 @@ func Start(in TCPServer) {
 		// handle connection in new goroutine
 		go handleRequest(conn, in)
 	}
+
+	// mdservice closes db here etc
+	in.finish()
 }
 
 func handleRequest(conn net.Conn, in TCPServer) {
