@@ -2,7 +2,9 @@ package server
 
 import (
 	"bufio"
+	"encoding/binary"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"github.com/CPSSD/MDFS/config"
 	"github.com/CPSSD/MDFS/utils"
@@ -12,6 +14,7 @@ import (
 	"net"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 )
 
@@ -24,8 +27,8 @@ type StorageNode struct {
 }
 
 type MDService struct {
-	userDB   bolt.DB
-	stnodeDB bolt.DB
+	UserDB   bolt.DB
+	StnodeDB bolt.DB
 	Server   // anonymous field of type Server
 }
 
@@ -74,17 +77,25 @@ func (md MDService) setup() {
 	// init the boltdb if it is not existant already
 	// one for users, one for stnodes
 	fmt.Println("This is a metadata service, opening DB's")
-	userDB, err := bolt.Open(md.getPath()+".userDB.db", 0777, nil)
+	UserDB, err := bolt.Open(md.getPath()+".userDB.db", 0777, nil)
 	if err != nil {
 		panic(err)
 	}
-	defer userDB.Close()
+	defer UserDB.Close()
 
-	stnodeDB, err := bolt.Open(md.getPath()+".stnodeDB.db", 0777, nil)
+	UserDB.Update(func(tx *bolt.Tx) error {
+		_, err := tx.CreateBucketIfNotExists([]byte("users"))
+		if err != nil {
+			return fmt.Errorf("create bucket: %s", err)
+		}
+		return nil
+	})
+
+	StnodeDB, err := bolt.Open(md.getPath()+".stnodeDB.db", 0777, nil)
 	if err != nil {
 		panic(err)
 	}
-	defer stnodeDB.Close()
+	defer StnodeDB.Close()
 }
 
 // checks request code and calls corresponding function
@@ -378,9 +389,55 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 
 	case 10: // setup new user
 
+		// get the uuid for the new user
+		var newUser utils.User
+		err := md.UserDB.Update(func(tx *bolt.Tx) error {
+
+			// Retrieve the users bucket.
+			// This should be created when the DB is first opened.
+			b := tx.Bucket([]byte("users"))
+
+			// Generate ID for the user.
+			// This returns an error only if the Tx is closed or not writeable.
+			// That can't happen in an Update() call so I ignore the error check.
+			id, _ := b.NextSequence()
+			newUser.Uuid = uint64(id)
+			idStr := strconv.FormatUint(id, 10)
+
+			// receive the public key (as a file) for the new user
+			tempKey := os.TempDir() + "/.mdfs_user_key" + idStr
+			utils.ReceiveFile(conn, r, tempKey)
+
+			err := utils.FileToStruct(tempKey, &newUser.Pubkey)
+			if err != nil {
+				return err
+			}
+
+			// Marshal user data into bytes.
+			buf, err := json.Marshal(newUser)
+			if err != nil {
+				return err
+			}
+
+			w.WriteString(idStr + "\n")
+			w.Flush()
+
+			// Persist bytes to users bucket.
+			return b.Put(itob(newUser.Uuid), buf)
+		})
+		if err != nil {
+			panic(err)
+		}
+
 		// needs implementation to mirror the client function
 
 	}
+}
+
+func itob(v uint64) []byte {
+	b := make([]byte, 8)
+	binary.LittleEndian.PutUint64(b, uint64(v))
+	return b
 }
 
 // package functions

@@ -36,12 +36,12 @@ func setup(r *bufio.Reader, w *bufio.Writer, thisUser *utils.User) (err error) {
 		}
 		thisUser.Pubkey = &thisUser.Privkey.PublicKey
 
-		err = utils.StructToFile(*thisUser.Pubkey, os.TempDir()+".mdfs_client_public_key")
+		err = utils.StructToFile(*thisUser.Pubkey, os.TempDir()+"/.mdfs_client_public_key")
 		if err != nil {
 			return err
 		}
 
-		utils.SendFile(nil, w, os.TempDir()+".mdfs_client_public_key")
+		utils.SendFile(nil, w, os.TempDir()+"/.mdfs_client_public_key")
 
 		uuid, _ := r.ReadString('\n')
 		thisUser.Uuid, err = strconv.ParseUint(strings.TrimSpace(uuid), 10, 64)
