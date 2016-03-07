@@ -2,6 +2,7 @@ package server
 
 import (
 	"bufio"
+	"crypto/rsa"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
@@ -11,6 +12,7 @@ import (
 	"github.com/boltdb/bolt"
 	"io"
 	"io/ioutil"
+	"math/big"
 	"net"
 	"os"
 	"path"
@@ -27,15 +29,15 @@ type StorageNode struct {
 }
 
 type MDService struct {
-	UserDB   bolt.DB
-	StnodeDB bolt.DB
+	userDB   *bolt.DB
+	stnodeDB *bolt.DB
 	Server   // anonymous field of type Server
 }
 
 // the Server interface
 type TCPServer interface {
 	parseConfig()
-	setup()
+	setup() error
 	finish()
 	getPath() string
 	getProtocol() string
@@ -69,23 +71,24 @@ func (md *MDService) parseConfig() {
 	md.conf = config.ParseConfiguration(utils.GetUserHome() + "/.mdservice/.mdservice_conf.json")
 }
 
-func (st StorageNode) setup() {
+func (st *StorageNode) setup() (err error) {
 
+	return err
 }
 
-func (md MDService) setup() {
+func (md *MDService) setup() (err error) {
 
 	// init the boltdb if it is not existant already
 	// one for users, one for stnodes
 	fmt.Println("This is a metadata service, opening DB's")
-	UserDB, err := bolt.Open(md.getPath()+".userDB.db", 0777, nil)
+	md.userDB, err = bolt.Open(md.getPath()+".userDB.db", 0777, nil)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	// defer userDB.Close()
 
-	UserDB.Update(func(tx *bolt.Tx) error {
+	md.userDB.Update(func(tx *bolt.Tx) error {
 		_, err := tx.CreateBucketIfNotExists([]byte("users"))
 		if err != nil {
 			return fmt.Errorf("create bucket: %s", err)
@@ -93,21 +96,27 @@ func (md MDService) setup() {
 		return nil
 	})
 
-	StnodeDB, err := bolt.Open(md.getPath()+".stnodeDB.db", 0777, nil)
+	fmt.Println("Set up user db's")
+
+	/*stnodeDB, err := bolt.Open(md.getPath()+".stnodeDB.db", 0777, nil)
 	if err != nil {
 		panic(err)
-	}
+	}*/
 	// defer stnodeDB.Close()
+	return err
 }
 
-func (st StorageNode) finish() {
+func (st *StorageNode) finish() {
 
 }
 
-func (md MDService) finish() {
+func (md *MDService) finish() {
 
+	fmt.Println("Ready to close dbs")
 	md.userDB.Close()
 	md.stnodeDB.Close()
+	fmt.Println("Closed dbs")
+
 }
 
 // checks request code and calls corresponding function
@@ -403,7 +412,7 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 
 		// get the uuid for the new user
 		var newUser utils.User
-		err := md.UserDB.Update(func(tx *bolt.Tx) error {
+		err := md.userDB.Update(func(tx *bolt.Tx) (err error) {
 
 			// Retrieve the users bucket.
 			// This should be created when the DB is first opened.
@@ -416,14 +425,18 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 			newUser.Uuid = uint64(id)
 			idStr := strconv.FormatUint(id, 10)
 
-			// receive the public key (as a file) for the new user
-			tempKey := os.TempDir() + "/.mdfs_user_key" + idStr
-			utils.ReceiveFile(conn, r, tempKey)
+			// receive the public key for the new user
 
-			err := utils.FileToStruct(tempKey, &newUser.Pubkey)
-			if err != nil {
-				return err
-			}
+			pubKN, _ := r.ReadString('\n')
+			pubKE, _ := r.ReadString('\n')
+
+			newUser.Pubkey = &rsa.PublicKey{N: big.NewInt(0)}
+			newUser.Pubkey.N.SetString(strings.TrimSpace(pubKN), 10)
+
+			newUser.Pubkey.E, err = strconv.Atoi(strings.TrimSpace(pubKE))
+
+			fmt.Println("recieved key")
+			fmt.Println("key stored in new user")
 
 			// Marshal user data into bytes.
 			buf, err := json.Marshal(newUser)
@@ -431,8 +444,13 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 				return err
 			}
 
+			fmt.Println("writing uuid")
+
 			w.WriteString(idStr + "\n")
+			fmt.Println("written")
+
 			w.Flush()
+			fmt.Println("flushed")
 
 			// Persist bytes to users bucket.
 			return b.Put(itob(newUser.Uuid), buf)
@@ -464,7 +482,10 @@ func Start(in TCPServer) {
 	port := in.getPort()
 
 	// mdservice would initialise database here
-	in.setup()
+	err := in.setup()
+	if err != nil {
+		panic(err)
+	}
 	defer in.finish()
 
 	// listen on specified interface & port

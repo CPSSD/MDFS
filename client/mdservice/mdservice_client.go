@@ -14,11 +14,15 @@ func setup(r *bufio.Reader, w *bufio.Writer, thisUser *utils.User) (err error) {
 	_, exists := os.Stat(utils.GetUserHome() + "/.client/.user_data")
 	if exists != nil { // not exist
 
+		fmt.Println("Make sure the local user dir exist")
+
 		// Make sure the local user dir exists
 		err := os.MkdirAll(utils.GetUserHome()+"/.client/", 0777)
 		if err != nil {
 			return err
 		}
+
+		fmt.Println("Notify mdserv of new user")
 
 		// notify mdservice that this is a new user (SENDCODE 10)
 		err = w.WriteByte(10) //
@@ -27,8 +31,12 @@ func setup(r *bufio.Reader, w *bufio.Writer, thisUser *utils.User) (err error) {
 		}
 		w.Flush()
 
+		fmt.Println("local user setup")
+
 		// local user setup
 		utils.GenUserKeys(utils.GetUserHome() + "/.client/.private_key")
+
+		fmt.Println("keys set up")
 
 		err = utils.FileToStruct(utils.GetUserHome()+"/.client/.private_key", &thisUser.Privkey)
 		if err != nil {
@@ -36,12 +44,13 @@ func setup(r *bufio.Reader, w *bufio.Writer, thisUser *utils.User) (err error) {
 		}
 		thisUser.Pubkey = &thisUser.Privkey.PublicKey
 
-		err = utils.StructToFile(*thisUser.Pubkey, os.TempDir()+"/.mdfs_client_public_key")
-		if err != nil {
-			return err
-		}
+		fmt.Println("ready to send public key, sending...")
 
-		utils.SendFile(nil, w, os.TempDir()+"/.mdfs_client_public_key")
+		w.Write([]byte(thisUser.Pubkey.N.String() + "\n"))
+		w.Write([]byte(strconv.Itoa(thisUser.Pubkey.E) + "\n"))
+		w.Flush()
+
+		fmt.Println("reading uuid")
 
 		uuid, _ := r.ReadString('\n')
 		thisUser.Uuid, err = strconv.ParseUint(strings.TrimSpace(uuid), 10, 64)
@@ -49,10 +58,14 @@ func setup(r *bufio.Reader, w *bufio.Writer, thisUser *utils.User) (err error) {
 			return err
 		}
 
+		fmt.Println("read uuid, store to file")
+
 		err = utils.StructToFile(*thisUser, utils.GetUserHome()+"/.client/.user_data")
 		if err != nil {
 			return err
 		}
+
+		fmt.Println("stored")
 
 		//NOTE: NOT COMPLETE
 
