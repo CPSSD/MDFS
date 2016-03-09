@@ -61,22 +61,39 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-
-		w.Write(hash)
-		if err = w.Flush(); err != nil {
+		fmt.Println(1)
+		err = utils.WriteHash(w, hash)
+		if err != nil {
 			panic(err)
 		}
+		fmt.Println(2)
 
 		// get handler code
 		handlecode, _ := r.ReadByte()
+		fmt.Println(handlecode)
+
 		switch handlecode {
 		case 3: // file available
-			output := "./output"
+			output := utils.GetUserHome()+"/.client/output"
+			fmt.Println(4)
 			utils.ReceiveFile(conn, r, output)
+			fmt.Println(5)
 		}
 
 	case 2: // send file to server
 		fmt.Println("Sending: " + send)
+
+		// send hash of file
+		hash, err := utils.ComputeMd5(send)
+		if err != nil {
+			panic(err)
+		}
+
+		err = utils.WriteHash(w, hash)
+		if err != nil {
+			panic(err)
+		}
+
 		utils.SendFile(conn, w, send)
 
 	default:

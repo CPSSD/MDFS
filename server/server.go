@@ -4,13 +4,11 @@ import (
 	"bufio"
 	"crypto/rsa"
 	"encoding/binary"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"github.com/CPSSD/MDFS/config"
 	"github.com/CPSSD/MDFS/utils"
 	"github.com/boltdb/bolt"
-	"io"
 	"io/ioutil"
 	"math/big"
 	"net"
@@ -193,14 +191,7 @@ func (st StorageNode) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *
 
 	switch code {
 	case 1: // client is requesting a file
-		// make a buffer to hold hash
-		buf := make([]byte, 16)
-		_, err := r.Read(buf)
-		if err != nil && err != io.EOF {
-			panic(err)
-		}
-
-		hash := hex.EncodeToString(buf)
+		hash := utils.ReadHashAsString(r)
 		fmt.Println("Hash received: " + hash)
 
 		// check if file exists
@@ -212,7 +203,8 @@ func (st StorageNode) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *
 			if err != nil {
 				panic(err)
 			}
-
+			w.Flush()
+			
 			// send the file
 			utils.SendFile(conn, w, fp)
 		} else {
@@ -221,19 +213,17 @@ func (st StorageNode) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *
 			if err != nil {
 				panic(err)
 			}
+			w.Flush()
 		}
 
 	case 2: // receive file from client
-		output := st.getPath() + "output"
+		hash := utils.ReadHashAsString(r)
+		output := st.getPath() + hash
 		utils.ReceiveFile(conn, r, output)
-		hash, err := utils.ComputeMd5(output)
-		if err != nil {
-			panic(err)
-		}
-		checksum := hex.EncodeToString(hash)
-		fmt.Println("md5 checksum of file is: " + checksum)
-		os.Rename(output, st.getPath()+checksum)
+
+		fmt.Println("md5 checksum of file is: " + hash)
 	}
+	conn.Close()
 }
 
 func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bufio.Writer) {
