@@ -141,7 +141,7 @@ func (md *MDService) setup() (err error) {
 	// init the boltdb if it is not existant already
 	// one for users, one for stnodes
 	fmt.Println("This is a metadata service, opening DB's")
-	md.userDB, err = bolt.Open(md.getPath()+".userDB.db", 0777, nil)
+	md.userDB, err = bolt.Open(md.getPath()+".userDB.db", 0700, nil)
 	if err != nil {
 		return err
 	}
@@ -158,7 +158,7 @@ func (md *MDService) setup() (err error) {
 
 	fmt.Println("Set up user db")
 
-	md.stnodeDB, err = bolt.Open(md.getPath()+".stnodeDB.db", 0777, nil)
+	md.stnodeDB, err = bolt.Open(md.getPath()+".stnodeDB.db", 0700, nil)
 	if err != nil {
 		panic(err)
 	}

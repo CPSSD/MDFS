@@ -8,7 +8,7 @@ import (
 
 func main() {
 
-	err := os.MkdirAll(utils.GetUserHome()+"/.stnode/", 0777)
+	err := os.MkdirAll(utils.GetUserHome()+"/.stnode/", 0700)
 	if err != nil {
 		panic(err)
 	}
