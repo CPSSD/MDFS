@@ -125,13 +125,13 @@ func main() {
 	for {
 
 		// print the user's command prompt
-		fmt.Print(user + ":" + currentDir + " >> ")
+		fmt.Print(user + ":" + strconv.FormatUint(thisUser.Uuid, 10) + ":" + currentDir + " >> ")
 
 		// read the next command
 		cmd, _ := reader.ReadString('\n')
 
 		// remove trailing newline character before splitting <- didn't notice this
-		//														 comment before Jacob
+		//                                                       comment before Jacob
 
 		args := strings.Split(strings.TrimSpace(cmd), " ")
 

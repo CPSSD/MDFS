@@ -96,13 +96,22 @@ func (md *MDService) setup() (err error) {
 		return nil
 	})
 
-	fmt.Println("Set up user db's")
+	fmt.Println("Set up user db")
 
-	/*stnodeDB, err := bolt.Open(md.getPath()+".stnodeDB.db", 0777, nil)
+	md.stnodeDB, err = bolt.Open(md.getPath()+".stnodeDB.db", 0777, nil)
 	if err != nil {
 		panic(err)
-	}*/
-	// defer stnodeDB.Close()
+	}
+
+	md.stnodeDB.Update(func(tx *bolt.Tx) error {
+		_, err := tx.CreateBucketIfNotExists([]byte("stnodes"))
+		if err != nil {
+			return fmt.Errorf("create bucket: %s", err)
+		}
+		return nil
+	})
+
+	fmt.Println("Set up stnode db")
 	return err
 }
 
@@ -459,7 +468,7 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 			panic(err)
 		}
 
-		// needs implementation to mirror the client function
+	case 11: // setup new storage node
 
 	}
 }
