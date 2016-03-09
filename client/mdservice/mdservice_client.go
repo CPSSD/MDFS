@@ -73,6 +73,7 @@ func setup(r *bufio.Reader, w *bufio.Writer, thisUser *utils.User) (err error) {
 
 	} else {
 
+		err = utils.FileToStruct(utils.GetUserHome()+"/.client/.user_data", &thisUser)
 	}
 
 	return err
@@ -421,16 +422,20 @@ func send(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string) (e
 
 	}
 
+	fmt.Println("Computing hash")
 	// get hash of the file to send to the stnode and mdserv
 	hash, err := utils.ComputeMd5(filepath)
 	if err != nil {
 		panic(err)
 	}
 	checksum := hex.EncodeToString(hash)
+	fmt.Println("Computed hash: " + checksum)
 
+	fmt.Println("Sending filename")
 	// Send filename to mdserv
-	w.WriteString(path.Base(filepath))
+	w.WriteString(path.Base(filepath) + "\n")
 	w.Flush()
+	fmt.Println("Sent")
 
 	// Get fail if file exists already
 	exists, _ := r.ReadByte()
@@ -438,25 +443,62 @@ func send(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string) (e
 
 		fmt.Println("File already exists")
 		return nil
+	} else if exists != 2 {
+
+		fmt.Println("Bad response from mdserv")
+		return nil
 	}
+
+	fmt.Println("File does not exist, sending hash")
 
 	// Send hash to mdserv
-	w.WriteString(checksum + "\n")
-	w.Flush()
-
-	// Get details of a storage node if file not exists
-	protocol, _ := r.ReadString('\n')
-	nAddress, _ := r.ReadString('\n')
-
-	protocol = strings.TrimSpace(protocol)
-	nAddress = strings.TrimSpace(nAddress)
-
-	// connect to stnode
-	conn, err := net.Dial(protocol, nAddress)
+	err = utils.WriteHash(w, hash)
 	if err != nil {
-		fmt.Println("Error connecting to stnode")
 		return err
 	}
+
+	fmt.Println("Hash sent, see are there stnodes available")
+
+	// See are there stnodes available
+	avail, _ := r.ReadByte()
+
+	var conn net.Conn
+
+	for avail != 2 {
+
+		// Get details of a storage node if file not exists
+		protocol, _ := r.ReadString('\n')
+		nAddress, _ := r.ReadString('\n')
+
+		protocol = strings.TrimSpace(protocol)
+		nAddress = strings.TrimSpace(nAddress)
+
+		fmt.Println("protocol: " + protocol + ", address: " + nAddress)
+
+		// connect to stnode
+		conn, err = net.Dial(protocol, nAddress)
+		if err != nil {
+
+			fmt.Println("Error connecting to stnode")
+			w.WriteByte(1)
+			w.Flush()
+
+		} else { // successful connection
+
+			avail = 3
+			w.WriteByte(2)
+			w.Flush()
+			break
+		}
+
+		avail, _ = r.ReadByte()
+	}
+
+	if avail != 3 {
+		fmt.Println("There were no stnodes available")
+		return nil
+	}
+
 	defer conn.Close()
 
 	// create a read and write buffer for the connection
@@ -465,7 +507,7 @@ func send(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string) (e
 	// tell the stnode we are sending a file
 	err = ws.WriteByte(2)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	// send hash to stnode

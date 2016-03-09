@@ -204,7 +204,7 @@ func (st StorageNode) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *
 				panic(err)
 			}
 			w.Flush()
-			
+
 			// send the file
 			utils.SendFile(conn, w, fp)
 		} else {
@@ -460,12 +460,109 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 			}
 		}
 
+		fmt.Println("Fin cd")
+
 		// the below cases will entail the logging of a file in the mdservice, telling
 		// the client which storage node to use, where to access files, sending public
 		// keys, permissions, etc.
 
 	case 5: // request
 	case 6: // send
+		fmt.Println("In send")
+
+		// get current dir
+		currentDir, _ := r.ReadString('\n')
+		currentDir = strings.TrimSpace(currentDir)
+
+		// receive filename from client
+		filename, _ := r.ReadString('\n')
+		filename = strings.TrimSpace(filename)
+
+		// check if the filename exists already
+		_, err := os.Stat(md.getPath() + "files" + currentDir + "/" + filename)
+		if err != nil { // not a path ie. not a dir OR a file
+
+			fmt.Println("File \"" + filename + "\" does not exist")
+
+			// notify the client that it is not a dir with code "2"
+			w.WriteByte(2)
+			w.Flush()
+
+		} else { // notify the client that the file exists with error code "1"
+
+			w.WriteByte(1)
+			w.Flush()
+
+			break
+		}
+
+		// get the hash of the file
+		hash := utils.ReadHashAsString(r)
+
+		var success byte
+		var unid string
+
+		fmt.Println(1)
+		md.stnodeDB.View(func(tx *bolt.Tx) error {
+			// Assume bucket exists and has keys
+			fmt.Println(2)
+			b := tx.Bucket([]byte("stnodes"))
+			fmt.Println(3)
+
+			c := b.Cursor()
+
+			fmt.Println(4)
+			for k, v := c.First(); k != nil; k, v = c.Next() {
+
+				fmt.Println(5)
+
+				fmt.Println(k)
+				fmt.Println(v)
+
+				w.WriteByte(1) // got a stnode
+				w.Flush()
+
+				var tmpStnode utils.Stnode
+				json.Unmarshal(v, &tmpStnode)
+
+				fmt.Println(tmpStnode)
+
+				fmt.Println("protocol: " + tmpStnode.Protocol + ", address: " + tmpStnode.NAddress)
+
+				w.WriteString(tmpStnode.Protocol + "\n")
+				w.WriteString(tmpStnode.NAddress + "\n")
+				unid = tmpStnode.Unid
+				w.Flush()
+
+				success, _ = r.ReadByte()
+				if success != 1 {
+					break
+				}
+			}
+
+			w.WriteByte(2) // no more stnodes
+			w.Flush()
+
+			return nil
+		})
+
+		if success != 2 {
+			fmt.Println("No stnodes were available to the client")
+			break
+		}
+
+		success, _ = r.ReadByte()
+		if success != 1 {
+			fmt.Println("Error on client side sending file to stnode")
+			break
+		}
+
+		err = createFile(md.getPath()+"files"+currentDir+"/"+filename, hash, unid)
+		if err != nil {
+			panic(err)
+		}
+
+		fmt.Println("Fin send")
 
 	case 10: // setup new user
 
@@ -532,8 +629,8 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 			// This returns an error only if the Tx is closed or not writeable.
 			// That can't happen in an Update() call so I ignore the error check.
 			id, _ := b.NextSequence()
-			newStnode.Unid = uint64(id)
 			idStr := strconv.FormatUint(id, 10)
+			newStnode.Unid = idStr
 
 			// Receive the connection type and the address to be used for
 			// conneting to the stnode
@@ -561,7 +658,7 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 			fmt.Println("flushed")
 
 			// Persist bytes to stnodes bucket.
-			return b.Put(itob(newStnode.Unid), buf)
+			return b.Put([]byte(idStr), buf)
 		})
 		if err != nil {
 			panic(err)
@@ -621,6 +718,16 @@ func Start(in TCPServer) {
 
 	// mdservice closes db here etc
 	in.finish()
+}
+
+func createFile(fileout, hash, unid string) error {
+
+	var tmpFileDesc utils.FileDesc
+
+	tmpFileDesc.Hash = hash
+	tmpFileDesc.Stnode = unid
+
+	return utils.StructToFile(tmpFileDesc, fileout)
 }
 
 func handleRequest(conn net.Conn, in TCPServer) {
