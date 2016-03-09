@@ -2,10 +2,12 @@ package main
 
 import (
 	"bufio"
+	"encoding/hex"
 	"fmt"
 	"github.com/CPSSD/MDFS/utils"
 	"net"
 	"os"
+	"path"
 	"strconv"
 	"strings"
 )
@@ -189,28 +191,10 @@ func main() {
 			fmt.Printf("Request the file\n")
 
 		case "send":
-			// START SENDCODE BLOCK
-			sendcode = 6
-
-			err := w.WriteByte(sendcode)
-			w.Flush()
+			err := send(r, w, currentDir, args)
 			if err != nil {
 				panic(err)
 			}
-			// END SENDCODE BLOCK
-
-			// Send filename to mdserv
-
-			// Get fail if file exists already
-
-			// Get the unid of a storage node if file not exists
-
-			// attempt to send the file (as per stnode_client)
-			// INSERT CODE HERE
-
-			// Send success/fail to mdserv to log the file send or not
-
-			// on failure to send a file, print err
 
 		default:
 
@@ -378,5 +362,118 @@ func cd(r *bufio.Reader, w *bufio.Writer, currentDir *string, args []string) (er
 		*currentDir = strings.TrimSuffix(*currentDir, "\n")
 	}
 
+	return err
+}
+
+func send(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string) (err error) {
+
+	// should have args format:
+	// send [local filename] [remote filename]
+	// Local filename can be a relative or absolute path
+	// Remote filename should not be the name of an existing
+	// file, else the remote file will be overwritten
+	if len(args) < 2 {
+		return err
+	}
+
+	// START SENDCODE BLOCK
+	err = w.WriteByte(6)
+	w.Flush()
+	if err != nil {
+		panic(err)
+	}
+	// END SENDCODE BLOCK
+
+	// Send current dir
+	w.WriteString(currentDir + "\n")
+	w.Flush()
+
+	// Format the file to send
+	filepath := ""
+	if path.IsAbs(args[1]) { // if we are trying to send an absolute filepath
+
+		filepath = args[1]
+
+	} else { // we must be sending a relative filepath, so calculate the path
+
+		wd, err := os.Getwd()
+		if err != nil {
+			return err
+		}
+		filepath = path.Join(wd, args[1])
+	}
+
+	// ensure the file is existant
+	src, err := os.Stat(filepath)
+	if err != nil {
+
+		fmt.Println("\"" + filepath + "\" does not exist")
+		return nil
+
+	} else if src.IsDir() {
+
+		fmt.Println("\"" + filepath + "\" is a directory, not a file")
+		return nil
+
+	} else {
+
+		fmt.Println("filepath to send is: \"" + filepath + "\"")
+
+	}
+
+	// get hash of the file to send to the stnode and mdserv
+	hash, err := utils.ComputeMd5(filepath)
+	if err != nil {
+		panic(err)
+	}
+	checksum := hex.EncodeToString(hash)
+
+	// Send filename to mdserv
+	w.WriteString(path.Base(filepath))
+	w.Flush()
+
+	// Get fail if file exists already
+	exists, _ := r.ReadByte()
+	if exists == 1 {
+
+		fmt.Println("File already exists")
+		return nil
+	}
+
+	// Send hash to mdserv
+	w.WriteString(checksum + "\n")
+	w.Flush()
+
+	// Get details of a storage node if file not exists
+	protocol, _ := r.ReadString('\n')
+	nAddress, _ := r.ReadString('\n')
+
+	protocol = strings.TrimSpace(protocol)
+	nAddress = strings.TrimSpace(nAddress)
+
+	// connect to stnode
+	conn, err := net.Dial(protocol, nAddress)
+	if err != nil {
+		fmt.Println("Error connecting to stnode")
+		return err
+	}
+	defer conn.Close()
+
+	// create a read and write buffer for the connection
+	ws := bufio.NewWriter(conn)
+
+	// send hash to stnode
+	ws.WriteString(checksum + "\n")
+
+	// send file to stnode
+	fmt.Println("Sending: " + filepath)
+	utils.SendFile(conn, ws, filepath)
+
+	// Send success/fail to mdserv to log the file send or not
+	w.WriteByte(1)
+	w.Flush()
+
+	fmt.Println("Successfully sent file")
+	// on failure to send a file, print err
 	return err
 }
