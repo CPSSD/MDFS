@@ -6,6 +6,7 @@ import (
 	"os"
 )
 
+//TODO maybe should make vars unexported and create accessor methods
 type Configuration struct {
 	Protocol string
 	Host     string
@@ -14,9 +15,8 @@ type Configuration struct {
 	Unid     string
 }
 
+// saves the passed in configuration to file
 func SetConfiguration(conf Configuration, filename string) (err error) {
-
-	// saves the passed in configuration to file
 
 	fo, err := os.Create(filename)
 	if err != nil {
@@ -32,8 +32,9 @@ func SetConfiguration(conf Configuration, filename string) (err error) {
 	return err
 }
 
+// get configuration information from JSON file
 func ParseConfiguration(filename string) Configuration {
-	// get configuration information from JSON file
+
 	file, _ := os.Open(filename)
 	decoder := json.NewDecoder(file)
 	configuration := Configuration{}
