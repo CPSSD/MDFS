@@ -462,8 +462,17 @@ func send(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string) (e
 	// create a read and write buffer for the connection
 	ws := bufio.NewWriter(conn)
 
+	// tell the stnode we are sending a file
+	err = ws.WriteByte(2)
+	if err != nil {
+		panic(err)
+	}
+
 	// send hash to stnode
-	ws.WriteString(checksum + "\n")
+	err = utils.WriteHash(ws, hash)
+	if err != nil {
+		return err
+	}
 
 	// send file to stnode
 	fmt.Println("Sending: " + filepath)
