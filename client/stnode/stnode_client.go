@@ -61,23 +61,19 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println(1)
+
 		err = utils.WriteHash(w, hash)
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println(2)
 
 		// get handler code
 		handlecode, _ := r.ReadByte()
-		fmt.Println(handlecode)
 
 		switch handlecode {
 		case 3: // file available
 			output := utils.GetUserHome()+"/.client/output"
-			fmt.Println(4)
 			utils.ReceiveFile(conn, r, output)
-			fmt.Println(5)
 		}
 
 	case 2: // send file to server
