@@ -74,6 +74,38 @@ func (md *MDService) parseConfig() {
 func (st *StorageNode) setup() (err error) {
 
 	// stnode will register with the mdserv here
+	protocol := "tcp"
+	socket := "localhost:1994"
+
+	fmt.Println("Connecting to mdserv")
+	conn, _ := net.Dial(protocol, socket)
+	defer conn.Close()
+
+	// read and write buffer to the mdserv
+	r := bufio.NewReader(conn)
+	w := bufio.NewWriter(conn)
+
+	var sendcode uint8
+	sendcode = 11
+
+	fmt.Println("Registering with mdserv")
+	// tell the mdserv that we are connecting to register this stnode
+	w.WriteByte(sendcode)
+	w.Flush()
+
+	fmt.Println("Sending connection details to mdserv")
+	// tell the mdserv the connection details for this stnode
+	w.WriteString(st.getProtocol() + "\n")
+	w.WriteString(st.getHost() + ":" + st.getPort() + "\n")
+	w.Flush()
+
+	fmt.Println("Waiting to receive unid")
+	// get the unid for this stnode
+	unid, _ := r.ReadString('\n')
+	unid = strings.TrimSpace(unid)
+
+	fmt.Println("Received unid: " + unid)
+
 	return err
 }
 
@@ -473,7 +505,7 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 
 		// get unid for a new stnode
 		var newStnode utils.Stnode
-		err := md.userDB.Update(func(tx *bolt.Tx) (err error) {
+		err := md.stnodeDB.Update(func(tx *bolt.Tx) (err error) {
 
 			// Retrieve the users bucket.
 			// This should be created when the DB is first opened.
