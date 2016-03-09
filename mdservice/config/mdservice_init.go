@@ -9,11 +9,11 @@ import (
 
 func main() {
 
-	err := os.MkdirAll(utils.GetUserHome()+"/.mdservice/", 0777)
+	err := os.MkdirAll(utils.GetUserHome()+"/.mdservice/", 0700)
 	if err != nil {
 		panic(err)
 	}
-	err = os.MkdirAll(utils.GetUserHome()+"/.mdservice/files/", 0777)
+	err = os.MkdirAll(utils.GetUserHome()+"/.mdservice/files/", 0700)
 	if err != nil {
 		panic(err)
 	}
