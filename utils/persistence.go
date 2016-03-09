@@ -12,6 +12,12 @@ type User struct {
 	Privkey *rsa.PrivateKey
 }
 
+type Stnode struct {
+	Unid     uint64
+	Protocol string
+	NAddress string
+}
+
 type FileDesc struct {
 	Owner       uint64
 	Permissions uint16

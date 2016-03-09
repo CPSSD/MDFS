@@ -470,6 +470,53 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 
 	case 11: // setup new storage node
 
+		// get unid for a new stnode
+		var newStnode utils.Stnode
+		err := md.userDB.Update(func(tx *bolt.Tx) (err error) {
+
+			// Retrieve the users bucket.
+			// This should be created when the DB is first opened.
+			b := tx.Bucket([]byte("stnodes"))
+
+			// Generate ID for the stnode.
+			// This returns an error only if the Tx is closed or not writeable.
+			// That can't happen in an Update() call so I ignore the error check.
+			id, _ := b.NextSequence()
+			newStnode.Unid = uint64(id)
+			idStr := strconv.FormatUint(id, 10)
+
+			// Receive the connection type and the address to be used for
+			// conneting to the stnode
+			protocol, _ := r.ReadString('\n')
+			nAddress, _ := r.ReadString('\n')
+
+			newStnode.Protocol = strings.TrimSpace(protocol)
+			newStnode.NAddress = strings.TrimSpace(nAddress)
+
+			fmt.Println("Received stnode " + newStnode.Unid + "'s protocol: " + newStnode.Protocol)
+			fmt.Println("Received stnode " + newStnode.Unid + "'s network address: " + newStnode.NAddress)
+
+			// Marshal stnode data into bytes.
+			buf, err := json.Marshal(newUnid)
+			if err != nil {
+				return err
+			}
+
+			fmt.Println("writing unid")
+
+			w.WriteString(idStr + "\n")
+			fmt.Println("written")
+
+			w.Flush()
+			fmt.Println("flushed")
+
+			// Persist bytes to stnodes bucket.
+			return b.Put(itob(newStnode.Unid), buf)
+		})
+		if err != nil {
+			panic(err)
+		}
+
 	}
 }
 
