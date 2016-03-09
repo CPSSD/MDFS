@@ -73,6 +73,7 @@ func (md *MDService) parseConfig() {
 
 func (st *StorageNode) setup() (err error) {
 
+	// stnode will register with the mdserv here
 	return err
 }
 
@@ -493,16 +494,16 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 			newStnode.Protocol = strings.TrimSpace(protocol)
 			newStnode.NAddress = strings.TrimSpace(nAddress)
 
-			fmt.Println("Received stnode " + newStnode.Unid + "'s protocol: " + newStnode.Protocol)
-			fmt.Println("Received stnode " + newStnode.Unid + "'s network address: " + newStnode.NAddress)
+			fmt.Println("Received stnode " + idStr + "'s protocol: " + newStnode.Protocol)
+			fmt.Println("Received stnode " + idStr + "'s network address: " + newStnode.NAddress)
 
 			// Marshal stnode data into bytes.
-			buf, err := json.Marshal(newUnid)
+			buf, err := json.Marshal(newStnode)
 			if err != nil {
 				return err
 			}
 
-			fmt.Println("writing unid")
+			fmt.Println("writing unid to stnode")
 
 			w.WriteString(idStr + "\n")
 			fmt.Println("written")
@@ -520,7 +521,7 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 	}
 }
 
-func itob(v uint64) []byte {
+func itob(v uint64) []byte { // convert uint64 to byte array
 	b := make([]byte, 8)
 	binary.LittleEndian.PutUint64(b, uint64(v))
 	return b
@@ -538,6 +539,7 @@ func Start(in TCPServer) {
 	port := in.getPort()
 
 	// mdservice would initialise database here
+	// stnode will register with mdservice here
 	err := in.setup()
 	if err != nil {
 		panic(err)
