@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"github.com/CPSSD/MDFS/config"
 	"github.com/CPSSD/MDFS/utils"
 	"os"
@@ -14,21 +13,12 @@ func main() {
 		panic(err)
 	}
 
-	fo, err := os.Create(utils.GetUserHome() + "/.stnode/stnode_conf.json")
-	if err != nil {
-		panic(err)
-	}
-
 	conf := config.ParseConfiguration("./storagenode/config/stnode_conf.json")
 	conf.Path = utils.GetUserHome() + "/.stnode/"
 
-	encoder := json.NewEncoder(fo)
-
-	err = encoder.Encode(conf)
-
+	// save the new configuration to file
+	err = config.SetConfiguration(conf, utils.GetUserHome()+"/.stnode/stnode_conf.json")
 	if err != nil {
 		panic(err)
 	}
-
-	fo.Close()
 }

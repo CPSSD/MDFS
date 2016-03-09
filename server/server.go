@@ -43,6 +43,8 @@ type TCPServer interface {
 	getProtocol() string
 	getPort() string
 	getHost() string
+	getUnid() string
+	setUnid(string) error
 	handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bufio.Writer)
 }
 
@@ -63,6 +65,22 @@ func (s Server) getHost() string {
 	return s.conf.Host
 }
 
+func (s Server) getUnid() string {
+	return s.conf.Unid
+}
+
+func (s *Server) setUnid(unid string) (err error) {
+
+	fmt.Println(s.getUnid())
+	s.conf.Unid = unid
+	fmt.Println(s.getUnid())
+	err = config.SetConfiguration(s.conf, utils.GetUserHome()+"/.stnode/stnode_conf.json")
+	if err != nil {
+		return err
+	}
+	return err
+}
+
 func (st *StorageNode) parseConfig() {
 	st.conf = config.ParseConfiguration(utils.GetUserHome() + "/.stnode/stnode_conf.json")
 }
@@ -73,38 +91,47 @@ func (md *MDService) parseConfig() {
 
 func (st *StorageNode) setup() (err error) {
 
-	// stnode will register with the mdserv here
-	protocol := "tcp"
-	socket := "localhost:1994"
+	fmt.Println(st.getUnid())
 
-	fmt.Println("Connecting to mdserv")
-	conn, _ := net.Dial(protocol, socket)
-	defer conn.Close()
+	if st.getUnid() == "-1" {
+		// stnode will register with the mdserv here
+		protocol := "tcp"
+		socket := "localhost:1994"
 
-	// read and write buffer to the mdserv
-	r := bufio.NewReader(conn)
-	w := bufio.NewWriter(conn)
+		fmt.Println("Connecting to mdserv")
+		conn, _ := net.Dial(protocol, socket)
+		defer conn.Close()
 
-	var sendcode uint8
-	sendcode = 11
+		// read and write buffer to the mdserv
+		r := bufio.NewReader(conn)
+		w := bufio.NewWriter(conn)
 
-	fmt.Println("Registering with mdserv")
-	// tell the mdserv that we are connecting to register this stnode
-	w.WriteByte(sendcode)
-	w.Flush()
+		var sendcode uint8
+		sendcode = 11
 
-	fmt.Println("Sending connection details to mdserv")
-	// tell the mdserv the connection details for this stnode
-	w.WriteString(st.getProtocol() + "\n")
-	w.WriteString(st.getHost() + ":" + st.getPort() + "\n")
-	w.Flush()
+		fmt.Println("Registering with mdserv")
+		// tell the mdserv that we are connecting to register this stnode
+		w.WriteByte(sendcode)
+		w.Flush()
 
-	fmt.Println("Waiting to receive unid")
-	// get the unid for this stnode
-	unid, _ := r.ReadString('\n')
-	unid = strings.TrimSpace(unid)
+		fmt.Println("Sending connection details to mdserv")
+		// tell the mdserv the connection details for this stnode
+		w.WriteString(st.getProtocol() + "\n")
+		w.WriteString(st.getHost() + ":" + st.getPort() + "\n")
+		w.Flush()
 
-	fmt.Println("Received unid: " + unid)
+		fmt.Println("Waiting to receive unid")
+		// get the unid for this stnode
+		unid, _ := r.ReadString('\n')
+		unid = strings.TrimSpace(unid)
+
+		st.setUnid(unid)
+
+		fmt.Println("Received unid: " + unid)
+	} else {
+
+		fmt.Println("Stnode has UNID: " + st.getUnid())
+	}
 
 	return err
 }
