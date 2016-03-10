@@ -467,6 +467,85 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 		// keys, permissions, etc.
 
 	case 5: // request
+		fmt.Println("In request")
+
+		//get currentDir
+		currentDir, _ := r.ReadString('\n')
+		currentDir = strings.TrimSpace(currentDir)
+
+		// receive filename from client
+		filename, _ := r.ReadString('\n')
+		filename = strings.TrimSpace(filename)
+
+		filename = path.Join(currentDir, filename)
+
+		// check if the filename exists
+		src, err := os.Stat(md.getPath() + "files" + filename)
+		if err != nil { // not a path ie. not a dir OR a file
+
+			fmt.Println("File \"" + filename + "\" does not exist")
+
+			// notify the client that it is not existant with code "2"
+			w.WriteByte(1)
+			w.Flush()
+			break
+
+		} else if src.IsDir() { // notify the client that the file exists with code "1"
+
+			fmt.Println("Path \"" + filename + "\" is a directory")
+
+			// notify that is a dir
+			w.WriteByte(2)
+			w.Flush()
+		} else {
+
+			fmt.Println("File \"" + filename + "\" exists")
+
+			// notify success
+			w.WriteByte(3)
+			w.Flush()
+		}
+
+		hash, unid, err := getFile(md.getPath() + "files" + currentDir + "/" + filename)
+
+		fmt.Println(hash + ", " + unid)
+
+		md.stnodeDB.View(func(tx *bolt.Tx) error {
+			// Assume bucket exists and has keys
+			fmt.Println(2)
+			b := tx.Bucket([]byte("stnodes"))
+
+			v := b.Get([]byte(unid))
+			fmt.Println(3)
+
+			if v == nil {
+
+				fmt.Println("No stnode for: " + unid)
+				w.WriteByte(1)
+				w.Flush()
+				return nil
+			}
+
+			w.WriteByte(2)
+			w.Flush()
+
+			var tmpStnode utils.Stnode
+			json.Unmarshal(v, &tmpStnode)
+
+			fmt.Println(tmpStnode)
+
+			fmt.Println("protocol: " + tmpStnode.Protocol + ", address: " + tmpStnode.NAddress)
+
+			w.WriteString(hash + "\n")
+			w.WriteString(tmpStnode.Protocol + "\n")
+			w.WriteString(tmpStnode.NAddress + "\n")
+			w.Flush()
+
+			return nil
+		})
+
+		fmt.Println("Fin request")
+
 	case 6: // send
 		fmt.Println("In send")
 
@@ -728,6 +807,16 @@ func createFile(fileout, hash, unid string) error {
 	tmpFileDesc.Stnode = unid
 
 	return utils.StructToFile(tmpFileDesc, fileout)
+}
+
+func getFile(fileout string) (hash, unid string, err error) {
+
+	var tmpFileDesc utils.FileDesc
+
+	err = utils.FileToStruct(fileout, &tmpFileDesc)
+	hash = tmpFileDesc.Hash
+	unid = tmpFileDesc.Stnode
+	return
 }
 
 func handleRequest(conn net.Conn, in TCPServer) {
