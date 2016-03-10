@@ -13,7 +13,7 @@ type User struct {
 }
 
 type Stnode struct {
-	Unid     uint64
+	Unid     string
 	Protocol string
 	NAddress string
 }
@@ -21,8 +21,8 @@ type Stnode struct {
 type FileDesc struct {
 	Owner       uint64
 	Permissions uint16
-	Hash        []byte
-	Stnodes     []uint64
+	Hash        string
+	Stnode      string
 }
 
 func StructToFile(e interface{}, filename string) (err error) {
