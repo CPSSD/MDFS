@@ -102,7 +102,7 @@ func main() {
 	r := bufio.NewReader(conn)
 	w := bufio.NewWriter(conn)
 
-	var sendcode uint8
+	//var sendcode uint8
 
 	// run setup of user.
 	// will register with mdservice to get new uuid if a local
@@ -179,17 +179,10 @@ func main() {
 			os.Exit(1)
 
 		case "request":
-			// START SENDCODE BLOCK
-			sendcode = 5
-
-			err := w.WriteByte(sendcode)
-			w.Flush()
+			err := request(r, w, currentDir, args)
 			if err != nil {
 				panic(err)
 			}
-			// END SENDCODE BLOCK
-
-			fmt.Printf("Request the file\n")
 
 		case "send":
 			err := send(r, w, currentDir, args)
@@ -527,4 +520,90 @@ func send(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string) (e
 	fmt.Println("Successfully sent file")
 	// on failure to send a file, print err
 	return err
+}
+
+func request(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string) (err error) {
+
+	// should have args format:
+	// request [remote filename] [local filename]
+	// currently:
+	// request [remote filename]
+	// Local filename can be a relative or absolute path
+
+	if len(args) < 2 {
+		return err
+	}
+
+	// START SENDCODE BLOCK
+	err = w.WriteByte(5)
+	w.Flush()
+	if err != nil {
+		panic(err)
+	}
+	// END SENDCODE BLOCK
+
+	// Send current dir
+	w.WriteString(currentDir + "\n")
+	w.Flush()
+
+	// Format the file to send
+	w.WriteString(args[1] + "\n")
+	w.Flush()
+
+	success, _ := r.ReadByte()
+	if success != 3 {
+
+		fmt.Println("Invalid file request")
+		return nil
+	}
+
+	success, _ = r.ReadByte()
+	if success != 2 {
+
+		fmt.Println("No stnodes for your file")
+		return nil
+	}
+
+	hash, _ := r.ReadString('\n')
+	protocol, _ := r.ReadString('\n')
+	nAddress, _ := r.ReadString('\n')
+
+	hash = strings.TrimSpace(hash)
+	protocol = strings.TrimSpace(protocol)
+	nAddress = strings.TrimSpace(nAddress)
+
+	conn, err := net.Dial(protocol, nAddress)
+	if err != nil {
+		fmt.Println("Error connecting to stnode")
+	}
+
+	ws := bufio.NewWriter(conn)
+	rs := bufio.NewReader(conn)
+
+	ws.WriteByte(1)
+
+	output := utils.GetUserHome() + "/.client/" + path.Base(args[1])
+
+	bytehash, err := hex.DecodeString(hash)
+	if err != nil {
+		return err
+	}
+
+	err = utils.WriteHash(ws, bytehash)
+	if err != nil {
+		return err
+	}
+
+	success, _ = rs.ReadByte()
+	if success != 3 {
+
+		fmt.Println("File cannot be found on stnode")
+		return err
+	}
+
+	utils.ReceiveFile(conn, rs, output)
+
+	fmt.Println("File exists")
+
+	return
 }
