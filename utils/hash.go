@@ -2,7 +2,7 @@ package utils
 
 import (
 	"bufio"
-	"crypto/md5ß"
+	"crypto/md5"
 	"encoding/hex"
 	"io"
 	"os"
