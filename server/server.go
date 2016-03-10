@@ -239,7 +239,7 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 		// get current dir
 		// NOTE: here and in other locations, trimming whitespace may be more desirable
 		currentDir, _ := r.ReadString('\n')
-		currentDir = strings.TrimSuffix(currentDir, "\n")
+		currentDir = strings.TrimSpace(currentDir)
 
 		// get the length of arguments to the ls command
 		lenArgs, _ := r.ReadByte()
@@ -287,15 +287,19 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 
 			// reading in this arg
 			targetPath, _ := r.ReadString('\n')
-			targetPath = strings.TrimSuffix(targetPath, "\n")
+			targetPath = strings.TrimSpace(targetPath)
 
-			fmt.Printf("  in loop read in targetPath: %s\n", (currentDir + "/" + targetPath))
+			if !path.IsAbs(targetPath) {
+				targetPath = path.Join(currentDir, targetPath)
+			}
+
+			fmt.Printf("  in loop read in targetPath: %s\n", (targetPath))
 
 			// added in a "/" as we do not know if the user tried to call "ls dir" or "ls /dir"
 			// or "ls ./dir" etc. ReadDir() does not mind extra "/"s. "ls /dir" and "ls ./dir"
 			// currently evaluate to the same thing as they are both prepended by currentDir
 			// below, possibly viewed as a bug because it is not identical to UNIX ls.
-			files, err := ioutil.ReadDir(md.getPath() + "files" + currentDir + "/" + targetPath)
+			files, err := ioutil.ReadDir(md.getPath() + "files" + targetPath)
 			if err != nil {
 
 				// if it is not a directory, skip it and try the next arg
@@ -344,7 +348,7 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 
 		// get currentDir
 		currentDir, _ := r.ReadString('\n')
-		currentDir = strings.TrimSuffix(currentDir, "\n")
+		currentDir = strings.TrimSpace(currentDir)
 
 		// get lenArgs for mkdir
 		lenArgs, _ := r.ReadByte()
@@ -358,12 +362,17 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 
 			// for each arg, get the target path
 			targetPath, _ := r.ReadString('\n')
+			targetPath = strings.TrimSpace(targetPath)
+
+			if !path.IsAbs(targetPath) {
+				targetPath = path.Join(currentDir, targetPath)
+			}
 
 			// print the target for terminal's sake
 			fmt.Printf("  in loop read in targetPath: %s", targetPath)
 
 			// MkdirAll creates an entire file path if some dirs are missing
-			os.MkdirAll(md.getPath()+"files"+currentDir+"/"+strings.TrimSpace(targetPath), 0777)
+			os.MkdirAll(md.getPath()+"files"+targetPath, 0777)
 		}
 
 		// end of mkdir
@@ -374,7 +383,7 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 
 		// get currentDir
 		currentDir, _ := r.ReadString('\n')
-		currentDir = strings.TrimSuffix(currentDir, "\n")
+		currentDir = strings.TrimSpace(currentDir)
 
 		// get len args for rmdir
 		lenArgs, _ := r.ReadByte()
@@ -386,6 +395,12 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 			fmt.Printf("  in loop at pos %d ready to read\n", i)
 
 			targetPath, _ := r.ReadString('\n')
+			targetPath = strings.TrimSpace(targetPath)
+
+			if !path.IsAbs(targetPath) {
+				targetPath = path.Join(currentDir, targetPath)
+			}
+
 			fmt.Printf("  in loop read in targetPath: %s", targetPath)
 
 			// this will only remove a dir that is empty, else it does nothing
@@ -395,7 +410,7 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 			// a path is a dir or a file is found in "cd" below).
 			// NOTE: a nice to have would be a recursive remove similar to rm -rf,
 			// but this is not needed
-			os.Remove(md.getPath() + "files" + currentDir + "/" + strings.TrimSpace(targetPath))
+			os.Remove(md.getPath() + "files" + targetPath)
 		}
 
 		// end of rmdir
@@ -404,27 +419,23 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 	case 4: // cd
 		fmt.Println("In cd")
 
-		// get current dir
+		// get current dir and target path
 		currentDir, _ := r.ReadString('\n')
-		currentDir = strings.TrimSuffix(currentDir, "\n")
+		targetPath, _ := r.ReadString('\n')
+
+		currentDir = strings.TrimSpace(currentDir)
+		targetPath = strings.TrimSpace(targetPath)
+
+		if !path.IsAbs(targetPath) {
+			targetPath = path.Join(currentDir, targetPath)
+		}
 
 		// print for terminal's sake
 		fmt.Printf("currentDir = %s\n", currentDir)
-
-		// get target path
-		targetPath, _ := r.ReadString('\n')
-		targetPath = strings.TrimSuffix(targetPath, "\n")
-
-		// print for terminal's sake
 		fmt.Printf("targetPath = %s\n", targetPath)
 
-		// remove leading and trailing "/"s, not sure if this was necessary,
-		// test before removal for all possible cd commands
-		targetPath = strings.TrimPrefix(targetPath, "/")
-		targetPath = strings.TrimSuffix(targetPath, "/")
-
 		// check if the source dir exist
-		src, err := os.Stat(md.getPath() + "files" + currentDir + "/" + targetPath)
+		src, err := os.Stat(md.getPath() + "files" + targetPath)
 		if err != nil { // not a path ie. not a dir OR a file
 
 			fmt.Println("Path is not a directory")
@@ -451,7 +462,6 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 				w.Flush()
 
 				// create a clean path that the user can display on the cmd line
-				targetPath := path.Join(currentDir + "/" + targetPath)
 				fmt.Printf("Path \"%s\" is a directory\n", targetPath)
 
 				// send the new path back to the user
@@ -477,7 +487,11 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 		filename, _ := r.ReadString('\n')
 		filename = strings.TrimSpace(filename)
 
-		filename = path.Join(currentDir, filename)
+		// Cleans the filepath for proper access use
+
+		if !path.IsAbs(filename) {
+			filename = path.Join(currentDir, filename)
+		}
 
 		// check if the filename exists
 		src, err := os.Stat(md.getPath() + "files" + filename)
@@ -506,7 +520,7 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 			w.Flush()
 		}
 
-		hash, unid, err := getFile(md.getPath() + "files" + currentDir + "/" + filename)
+		hash, unid, err := getFile(md.getPath() + "files" + filename)
 
 		fmt.Println(hash + ", " + unid)
 
@@ -557,8 +571,13 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 		filename, _ := r.ReadString('\n')
 		filename = strings.TrimSpace(filename)
 
+		// clean the path
+		if !path.IsAbs(filename) {
+			filename = path.Join(currentDir, filename)
+		}
+
 		// check if the filename exists already
-		_, err := os.Stat(md.getPath() + "files" + currentDir + "/" + filename)
+		_, err := os.Stat(md.getPath() + "files" + filename)
 		if err != nil { // not a path ie. not a dir OR a file
 
 			fmt.Println("File \"" + filename + "\" does not exist")
@@ -636,7 +655,7 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 			break
 		}
 
-		err = createFile(md.getPath()+"files"+currentDir+"/"+filename, hash, unid)
+		err = createFile(md.getPath()+"files"+filename, hash, unid)
 		if err != nil {
 			panic(err)
 		}
