@@ -79,12 +79,9 @@ func (s *Server) setUnid(unid string) (err error) {
 	return err
 }
 
+// StorageNode methods
 func (st *StorageNode) parseConfig() {
 	st.conf = config.ParseConfiguration(utils.GetUserHome() + "/.stnode/stnode_conf.json")
-}
-
-func (md *MDService) parseConfig() {
-	md.conf = config.ParseConfiguration(utils.GetUserHome() + "/.mdservice/.mdservice_conf.json")
 }
 
 func (st *StorageNode) setup() (err error) {
@@ -134,6 +131,17 @@ func (st *StorageNode) setup() (err error) {
 	return err
 }
 
+func (st *StorageNode) finish() {
+
+}
+
+// MDService methods
+// initialise its memeber variable with values from config file
+func (md *MDService) parseConfig() {
+	md.conf = config.ParseConfiguration(utils.GetUserHome() + "/.mdservice/.mdservice_conf.json")
+}
+
+// open user and stnode db
 func (md *MDService) setup() (err error) {
 
 	// init the boltdb if it is not existant already
@@ -143,8 +151,6 @@ func (md *MDService) setup() (err error) {
 	if err != nil {
 		return err
 	}
-
-	// defer userDB.Close()
 
 	md.userDB.Update(func(tx *bolt.Tx) error {
 		_, err := tx.CreateBucketIfNotExists([]byte("users"))
@@ -173,17 +179,13 @@ func (md *MDService) setup() (err error) {
 	return err
 }
 
-func (st *StorageNode) finish() {
-
-}
-
+// close user and stnode db
 func (md *MDService) finish() {
 
 	fmt.Println("Ready to close dbs")
 	md.userDB.Close()
 	md.stnodeDB.Close()
 	fmt.Println("Closed dbs")
-
 }
 
 // checks request code and calls corresponding function
