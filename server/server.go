@@ -522,7 +522,15 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 			w.Flush()
 		}
 
-		hash, unid, err := getFile(md.getPath() + "files" + filename)
+		hash, unid, protected, err := getFile(md.getPath() + "files" + filename)
+
+		if protected {
+			w.WriteByte(1)
+			w.Flush()
+		} else {
+			w.WriteByte(2)
+			w.Flush()
+		}
 
 		fmt.Println(hash + ", " + unid)
 
@@ -888,13 +896,14 @@ func createFile(fileout, hash, unid string, protected bool) error {
 	return utils.StructToFile(tmpFileDesc, fileout)
 }
 
-func getFile(fileout string) (hash, unid string, err error) {
+func getFile(fileout string) (hash, unid string, protected bool, err error) {
 
 	var tmpFileDesc utils.FileDesc
 
 	err = utils.FileToStruct(fileout, &tmpFileDesc)
 	hash = tmpFileDesc.Hash
 	unid = tmpFileDesc.Stnode
+	protected = tmpFileDesc.Protected
 	return
 }
 

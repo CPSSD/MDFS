@@ -628,6 +628,12 @@ func request(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string,
 		return nil
 	}
 
+	protected := false
+	enc, _ := r.ReadByte()
+	if enc == 1 {
+		protected = true
+	}
+
 	success, _ = r.ReadByte()
 	if success != 2 {
 
@@ -653,8 +659,6 @@ func request(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string,
 
 	ws.WriteByte(1)
 
-	output := utils.GetUserHome() + "/.client/" + path.Base(args[1])
-
 	bytehash, err := hex.DecodeString(hash)
 	if err != nil {
 		return err
@@ -672,7 +676,23 @@ func request(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string,
 		return err
 	}
 
-	utils.ReceiveFile(conn, rs, output)
+	output := utils.GetUserHome() + "/.client/" + path.Base(args[1])
+
+	if protected {
+
+		encrypFile := os.TempDir() + "/" + path.Base(args[1])
+		utils.ReceiveFile(conn, rs, encrypFile)
+
+		err = utils.DecryptFile(encrypFile, output, *thisUser)
+		if err != nil {
+			return err
+		}
+
+	} else {
+
+		utils.ReceiveFile(conn, rs, output)
+
+	}
 
 	fmt.Println("File exists")
 
