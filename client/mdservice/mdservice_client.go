@@ -2,9 +2,11 @@ package main
 
 import (
 	"bufio"
+	"crypto/rsa"
 	"encoding/hex"
 	"fmt"
 	"github.com/CPSSD/MDFS/utils"
+	"math/big"
 	"net"
 	"os"
 	"path"
@@ -35,6 +37,12 @@ func setup(r *bufio.Reader, w *bufio.Writer, thisUser *utils.User) (err error) {
 
 		fmt.Println("local user setup")
 
+		reader := bufio.NewReader(os.Stdin)
+
+		fmt.Print("Please enter your username and hit enter: ")
+		uname, _ := reader.ReadString('\n')
+		thisUser.Uname = strings.TrimSpace(uname)
+
 		// local user setup
 		utils.GenUserKeys(utils.GetUserHome() + "/.client/.private_key")
 
@@ -48,6 +56,8 @@ func setup(r *bufio.Reader, w *bufio.Writer, thisUser *utils.User) (err error) {
 
 		fmt.Println("ready to send public key, sending...")
 
+		// send username and keys
+		w.WriteString(uname)
 		w.Write([]byte(thisUser.Pubkey.N.String() + "\n"))
 		w.Write([]byte(strconv.Itoa(thisUser.Pubkey.E) + "\n"))
 		w.Flush()
@@ -89,8 +99,6 @@ func main() {
 	protocol := "tcp"
 	socket := "localhost:1994"
 
-	user := "jim"
-
 	// will be filled out in setup, contents of User struct
 	// may change slightly to include extra data
 	var thisUser utils.User
@@ -128,7 +136,7 @@ func main() {
 	for {
 
 		// print the user's command prompt
-		fmt.Print(user + ":" + strconv.FormatUint(thisUser.Uuid, 10) + ":" + currentDir + " >> ")
+		fmt.Print(thisUser.Uname + ":" + strconv.FormatUint(thisUser.Uuid, 10) + ":" + currentDir + " >> ")
 
 		// read the next command
 		cmd, _ := reader.ReadString('\n')
@@ -179,13 +187,13 @@ func main() {
 			os.Exit(1)
 
 		case "request":
-			err := request(r, w, currentDir, args)
+			err := request(r, w, currentDir, args, &thisUser)
 			if err != nil {
 				panic(err)
 			}
 
 		case "send":
-			err := send(r, w, currentDir, args)
+			err := send(r, w, currentDir, args, &thisUser)
 			if err != nil {
 				panic(err)
 			}
@@ -359,7 +367,7 @@ func cd(r *bufio.Reader, w *bufio.Writer, currentDir *string, args []string) (er
 	return err
 }
 
-func send(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string) (err error) {
+func send(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string, thisUser *utils.User) (err error) {
 
 	// should have args format:
 	// send [local filename] [remote filename]
@@ -415,15 +423,6 @@ func send(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string) (e
 
 	}
 
-	fmt.Println("Computing hash")
-	// get hash of the file to send to the stnode and mdserv
-	hash, err := utils.ComputeMd5(filepath)
-	if err != nil {
-		panic(err)
-	}
-	checksum := hex.EncodeToString(hash)
-	fmt.Println("Computed hash: " + checksum)
-
 	fmt.Println("Sending filename")
 	// Send filename to mdserv
 	w.WriteString(path.Base(filepath) + "\n")
@@ -441,6 +440,78 @@ func send(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string) (e
 		fmt.Println("Bad response from mdserv")
 		return nil
 	}
+
+	// Encryption or not?
+	if len(args) >= 3 {
+		if args[2] != "--protect" && args[2] != "-p" {
+			fmt.Println("Invalid command option")
+			w.WriteByte(2)
+			w.Flush()
+			return nil
+		}
+
+		w.WriteByte(1) // tell mdserv we are encrypting
+		w.Flush()
+
+		users := []utils.User{*thisUser}
+
+		// send len of args
+		w.WriteByte(uint8(len(args) - 3))
+		w.Flush()
+
+		for i := 3; i < len(args); i++ {
+
+			w.WriteString(args[i] + "\n")
+			w.Flush()
+
+			fmt.Println("Sent: " + args[i])
+
+			uuid, _ := r.ReadString('\n')
+			uuid = strings.TrimSpace(uuid)
+
+			if uuid != "INV" {
+
+				var newUser utils.User
+
+				newUser.Uuid, _ = strconv.ParseUint(uuid, 10, 64)
+
+				// receive the public key for the new user
+
+				pubKN, _ := r.ReadString('\n')
+				pubKE, _ := r.ReadString('\n')
+
+				newUser.Pubkey = &rsa.PublicKey{N: big.NewInt(0)}
+				newUser.Pubkey.N.SetString(strings.TrimSpace(pubKN), 10)
+				newUser.Pubkey.E, err = strconv.Atoi(strings.TrimSpace(pubKE))
+
+				users = append(users, newUser)
+			}
+		}
+
+		encrypFile := os.TempDir() + "/" + path.Base(filepath)
+
+		err = utils.EncryptFile(filepath, encrypFile, users...)
+		if err != nil {
+			return err
+		}
+
+		filepath = encrypFile
+
+	} else {
+
+		w.WriteByte(3) // normal continue
+		w.Flush()
+	}
+
+	fmt.Println("Computing hash")
+	// get hash of the file to send to the stnode and mdserv
+	hash, err := utils.ComputeMd5(filepath)
+	if err != nil {
+		panic(err)
+	}
+
+	checksum := hex.EncodeToString(hash)
+	fmt.Println("Computed hash: " + checksum)
 
 	fmt.Println("File does not exist, sending hash")
 
@@ -522,7 +593,7 @@ func send(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string) (e
 	return err
 }
 
-func request(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string) (err error) {
+func request(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string, thisUser *utils.User) (err error) {
 
 	// should have args format:
 	// request [remote filename] [local filename]

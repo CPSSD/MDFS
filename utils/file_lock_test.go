@@ -56,15 +56,22 @@ func CheckCrypto() (success bool, err error) {
 	puk = &prk.PublicKey
 
 	user1 := utils.User{Uuid: 1, Pubkey: puk, Privkey: prk}
+	user2 := utils.User{Uuid: 2, Pubkey: puk, Privkey: prk}
 
 	//test two files for encryption and then decryption
 
 	// Test 1st file
-	err = utils.EncryptFile(source1, encryp1, user1)
+	users := []utils.User{user1, user2}
+
+	err = utils.EncryptFile(source1, encryp1, users...)
 	if err != nil {
 		return false, err
 	}
 	err = utils.DecryptFile(encryp1, result1, user1)
+	if err != nil {
+		return false, err
+	}
+	err = utils.DecryptFile(encryp1, result1, user2)
 	if err != nil {
 		return false, err
 	}

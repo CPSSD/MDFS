@@ -594,6 +594,61 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 			break
 		}
 
+		// is the user encrypting the file?
+		protected := false
+		enc, _ := r.ReadByte()
+		if enc == 1 { // we are encrypting
+
+			protected = true
+			fmt.Println("Receiving encrypted file")
+			// send the pubkeys of users here
+
+			// get lenArgs
+			lenArgs, _ := r.ReadByte()
+
+			for i := 0; i < int(lenArgs); i++ {
+				fmt.Printf("About to query DB for time %d of %d\n", i, int(lenArgs))
+				md.userDB.View(func(tx *bolt.Tx) error {
+
+					b := tx.Bucket([]byte("users"))
+
+					// get the proposed uuid for a user
+					uuid, _ := r.ReadString('\n')
+					uuid = strings.TrimSpace(uuid)
+					uuidUint64, _ := strconv.ParseUint(uuid, 10, 64)
+
+					v := b.Get(itob(uuidUint64))
+
+					if v == nil {
+
+						fmt.Println("No user profile matching uuid: " + uuid)
+						w.WriteString("INV" + "\n")
+						w.Flush()
+						return nil
+					}
+
+					var tmpUser utils.User
+					json.Unmarshal(v, &tmpUser)
+
+					fmt.Println("Found user: " + tmpUser.Uname)
+
+					w.WriteString(uuid + "\n")
+					w.Write([]byte(tmpUser.Pubkey.N.String() + "\n"))
+					w.Write([]byte(strconv.Itoa(tmpUser.Pubkey.E) + "\n"))
+					w.Flush()
+
+					return nil
+				})
+
+			}
+
+		} else if enc == 2 {
+
+			//invalid cmd on client side
+			break
+			// else we are not
+		}
+
 		// get the hash of the file
 		hash := utils.ReadHashAsString(r)
 
@@ -655,7 +710,7 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 			break
 		}
 
-		err = createFile(md.getPath()+"files"+filename, hash, unid)
+		err = createFile(md.getPath()+"files"+filename, hash, unid, protected)
 		if err != nil {
 			panic(err)
 		}
@@ -679,16 +734,18 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 			newUser.Uuid = uint64(id)
 			idStr := strconv.FormatUint(id, 10)
 
-			// receive the public key for the new user
-
+			// receive the username	and public key for the new user
+			uname, _ := r.ReadString('\n')
 			pubKN, _ := r.ReadString('\n')
 			pubKE, _ := r.ReadString('\n')
 
+			newUser.Uname = strings.TrimSpace(uname)
 			newUser.Pubkey = &rsa.PublicKey{N: big.NewInt(0)}
 			newUser.Pubkey.N.SetString(strings.TrimSpace(pubKN), 10)
 
 			newUser.Pubkey.E, err = strconv.Atoi(strings.TrimSpace(pubKE))
 
+			fmt.Println("New user: " + newUser.Uname)
 			fmt.Println("recieved key")
 			fmt.Println("key stored in new user")
 
@@ -818,12 +875,13 @@ func Start(in TCPServer) {
 	in.finish()
 }
 
-func createFile(fileout, hash, unid string) error {
+func createFile(fileout, hash, unid string, protected bool) error {
 
 	var tmpFileDesc utils.FileDesc
 
 	tmpFileDesc.Hash = hash
 	tmpFileDesc.Stnode = unid
+	tmpFileDesc.Protected = protected
 
 	return utils.StructToFile(tmpFileDesc, fileout)
 }

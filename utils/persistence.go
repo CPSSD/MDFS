@@ -8,6 +8,7 @@ import (
 
 type User struct {
 	Uuid    uint64
+	Uname   string
 	Pubkey  *rsa.PublicKey
 	Privkey *rsa.PrivateKey
 }
@@ -19,6 +20,7 @@ type Stnode struct {
 }
 
 type FileDesc struct {
+	Protected   bool
 	Owner       uint64
 	Permissions uint16
 	Hash        string
