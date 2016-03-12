@@ -277,7 +277,9 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 
 			// iterate over the files, and comma separate them while appending to msg
 			for _, file := range files {
-				msg = msg + file.Name() + ","
+				if !utils.IsHidden(file.Name()) {
+					msg = msg + file.Name() + ","
+				}
 			}
 
 		}
@@ -326,7 +328,10 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 				msg = msg + targetPath + ":," // note comma to denote newline
 
 				for _, file := range files {
-					msg = msg + file.Name() + ","
+
+					if !utils.IsHidden(file.Name()) {
+						msg = msg + file.Name() + ","
+					}
 				}
 
 				// add an extra newline for spacing on client side
@@ -374,7 +379,9 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 			fmt.Printf("  in loop read in targetPath: %s", targetPath)
 
 			// MkdirAll creates an entire file path if some dirs are missing
-			os.MkdirAll(md.getPath()+"files"+targetPath, 0777)
+			if !utils.IsHidden(targetPath) {
+				os.MkdirAll(md.getPath()+"files"+targetPath, 0777)
+			}
 		}
 
 		// end of mkdir
@@ -412,7 +419,9 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 			// a path is a dir or a file is found in "cd" below).
 			// NOTE: a nice to have would be a recursive remove similar to rm -rf,
 			// but this is not needed
-			os.Remove(md.getPath() + "files" + targetPath)
+			if !utils.IsHidden(targetPath) {
+				os.Remove(md.getPath() + "files" + targetPath)
+			}
 		}
 
 		// end of rmdir
@@ -438,7 +447,7 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 
 		// check if the source dir exist
 		src, err := os.Stat(md.getPath() + "files" + targetPath)
-		if err != nil { // not a path ie. not a dir OR a file
+		if err != nil || utils.IsHidden(targetPath) { // not a path ie. not a dir OR a file
 
 			fmt.Println("Path is not a directory")
 
@@ -497,7 +506,7 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 
 		// check if the filename exists
 		src, err := os.Stat(md.getPath() + "files" + filename)
-		if err != nil { // not a path ie. not a dir OR a file
+		if err != nil || utils.IsHidden(filename) { // not a path ie. not a dir OR a file
 
 			fmt.Println("File \"" + filename + "\" does not exist")
 
@@ -588,11 +597,11 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 
 		// check if the filename exists already
 		_, err := os.Stat(md.getPath() + "files" + filename)
-		if err != nil { // not a path ie. not a dir OR a file
+		if err != nil && !utils.IsHidden(filename) { // not a path ie. not a dir OR a file
 
 			fmt.Println("File \"" + filename + "\" does not exist")
 
-			// notify the client that it is not a dir with code "2"
+			// notify the client that it is not already on system
 			w.WriteByte(2)
 			w.Flush()
 
