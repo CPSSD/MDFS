@@ -4,6 +4,8 @@ import (
 	"crypto/rsa"
 	"encoding/gob"
 	"os"
+	"path"
+	"strings"
 )
 
 type User struct {
@@ -25,6 +27,10 @@ type FileDesc struct {
 	Permissions uint16
 	Hash        string
 	Stnode      string
+}
+
+func IsHidden(filepath string) (hidden bool) {
+	return strings.HasPrefix(path.Base(filepath), ".")
 }
 
 func StructToFile(e interface{}, filename string) (err error) {

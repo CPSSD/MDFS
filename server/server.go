@@ -235,596 +235,69 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 	// although moving some code to a function to reduce duping may not be worth it
 	// if it is only one or two lines.
 	switch code {
-	case 1: // ls
+	case 1:
 		fmt.Println("In ls")
-
-		// get current dir
-		// NOTE: here and in other locations, trimming whitespace may be more desirable
-		currentDir, _ := r.ReadString('\n')
-		currentDir = strings.TrimSpace(currentDir)
-
-		// get the length of arguments to the ls command
-		lenArgs, _ := r.ReadByte()
-		fmt.Printf("lenArgs = %v\n", lenArgs)
-
-		// the message which will be returned to the user, each entry will be
-		// comma separated for the client to interpret
-		msg := ""
-
-		// if only the ls command was called
-		if lenArgs == 1 {
-
-			// md.getPath() == $HOME/.mdservice/
-			// NOTE: currentDir should always start with a "/" and end in a normal char,
-			// ie. not a "/". Following this convention avoids occurrences of double
-			// slashes, missing slashes etc.
-
-			// read the contents of the directory location to files
-			// BUG-NOTE: from client, if you cd into a directory, and this directory is
-			// subsequesntly deleted (by os user or otherwise) you will be unable to cd
-			// or ls back up as your currentDir will evaluate to a dir that does not exist.
-			// Possible fix is to do the conversion from relative to absolute path on the
-			// client side (if possible, not sure if it is or not), perhaps failsafe and
-			// return user to home ("/"), or maybe accept that deletions of dirs will
-			// likely not occurr when demoing
-
-			fmt.Println(md.getPath() + "files" + currentDir)
-
-			files, err := ioutil.ReadDir(md.getPath() + "files" + currentDir)
-			if err != nil {
-				w.Flush()
-			}
-
-			// iterate over the files, and comma separate them while appending to msg
-			for _, file := range files {
-				msg = msg + file.Name() + ","
-			}
-
+		err := ls(conn, r, w, &md)
+		if err != nil {
+			panic(err)
 		}
+		fmt.Println("Exited ls")
 
-		// loop for dealing with one or more args
-		for i := 1; i < int(lenArgs); i++ {
-
-			fmt.Printf("  in loop at pos %d ready to read\n", i)
-
-			// reading in this arg
-			targetPath, _ := r.ReadString('\n')
-			targetPath = strings.TrimSpace(targetPath)
-
-			if !path.IsAbs(targetPath) {
-				targetPath = path.Join(currentDir, targetPath)
-			}
-
-			fmt.Printf("  in loop read in targetPath: %s\n", (targetPath))
-
-			// added in a "/" as we do not know if the user tried to call "ls dir" or "ls /dir"
-			// or "ls ./dir" etc. ReadDir() does not mind extra "/"s. "ls /dir" and "ls ./dir"
-			// currently evaluate to the same thing as they are both prepended by currentDir
-			// below, possibly viewed as a bug because it is not identical to UNIX ls.
-			files, err := ioutil.ReadDir(md.getPath() + "files" + targetPath)
-			if err != nil {
-
-				// if it is not a directory, skip it and try the next arg
-				continue
-
-			} else {
-
-				// allows multiple dirs to be ls'd and still know which is which
-				//
-				// ex. output:
-				//
-				// jim:/memes >> ls pepe nyan
-				// pepe:
-				// img1.jpg
-				// img2.png
-				//
-				// nyan:
-				// sound.wav
-				//
-				// jim:/memes >>
-
-				msg = msg + targetPath + ":," // note comma to denote newline
-
-				for _, file := range files {
-					msg = msg + file.Name() + ","
-				}
-
-				// add an extra newline for spacing on client side
-				msg = msg + ","
-			}
-		}
-
-		// remove the last newline for graphical reasons
-		msg = strings.TrimSuffix(msg, ",")
-
-		// add the newline back in for some bizarre reaason? not sure why,
-		// don't remove without testing effects on all types of ls command
-		w.WriteString(msg + ", ")
-		w.Flush()
-
-		// print for terminal's sake
-		fmt.Println("Fin ls")
-
-	case 2: // mkdir
+	case 2:
 		fmt.Println("In mkdir")
-
-		// get currentDir
-		currentDir, _ := r.ReadString('\n')
-		currentDir = strings.TrimSpace(currentDir)
-
-		// get lenArgs for mkdir
-		lenArgs, _ := r.ReadByte()
-		fmt.Printf("lenArgs = %v\n", lenArgs)
-
-		// if no more than "mkdir" is sent, nothing will happen
-		// if errors occur, the dir will just not be made
-		for i := 1; i < int(lenArgs); i++ {
-
-			fmt.Printf("  in loop at pos %d ready to read\n", i)
-
-			// for each arg, get the target path
-			targetPath, _ := r.ReadString('\n')
-			targetPath = strings.TrimSpace(targetPath)
-
-			if !path.IsAbs(targetPath) {
-				targetPath = path.Join(currentDir, targetPath)
-			}
-
-			// print the target for terminal's sake
-			fmt.Printf("  in loop read in targetPath: %s", targetPath)
-
-			// MkdirAll creates an entire file path if some dirs are missing
-			os.MkdirAll(md.getPath()+"files"+targetPath, 0777)
+		err := mkdir(conn, r, w, &md)
+		if err != nil {
+			panic(err)
 		}
-
-		// end of mkdir
 		fmt.Println("Fin mkdir")
 
-	case 3: // rmdir
+	case 3:
 		fmt.Println("In rmdir")
-
-		// get currentDir
-		currentDir, _ := r.ReadString('\n')
-		currentDir = strings.TrimSpace(currentDir)
-
-		// get len args for rmdir
-		lenArgs, _ := r.ReadByte()
-		fmt.Printf("lenArgs = %v\n", lenArgs)
-
-		// only does something if more than "rmdir" is called, as above
-		for i := 1; i < int(lenArgs); i++ {
-
-			fmt.Printf("  in loop at pos %d ready to read\n", i)
-
-			targetPath, _ := r.ReadString('\n')
-			targetPath = strings.TrimSpace(targetPath)
-
-			if !path.IsAbs(targetPath) {
-				targetPath = path.Join(currentDir, targetPath)
-			}
-
-			fmt.Printf("  in loop read in targetPath: %s", targetPath)
-
-			// this will only remove a dir that is empty, else it does nothing
-			// BUG-NOTE: this command will also currently delete files (there is not
-			// a different command to rmdir an rm in golang), so a check to make sure
-			// the targetPath is a dir should take place (sample code for checking if
-			// a path is a dir or a file is found in "cd" below).
-			// NOTE: a nice to have would be a recursive remove similar to rm -rf,
-			// but this is not needed
-			os.Remove(md.getPath() + "files" + targetPath)
+		err := rmdir(conn, r, w, &md)
+		if err != nil {
+			panic(err)
 		}
-
-		// end of rmdir
 		fmt.Println("Fin rmdir")
 
 	case 4: // cd
 		fmt.Println("In cd")
-
-		// get current dir and target path
-		currentDir, _ := r.ReadString('\n')
-		targetPath, _ := r.ReadString('\n')
-
-		currentDir = strings.TrimSpace(currentDir)
-		targetPath = strings.TrimSpace(targetPath)
-
-		if !path.IsAbs(targetPath) {
-			targetPath = path.Join(currentDir, targetPath)
+		err := cd(conn, r, w, &md)
+		if err != nil {
+			panic(err)
 		}
-
-		// print for terminal's sake
-		fmt.Printf("currentDir = %s\n", currentDir)
-		fmt.Printf("targetPath = %s\n", targetPath)
-
-		// check if the source dir exist
-		src, err := os.Stat(md.getPath() + "files" + targetPath)
-		if err != nil { // not a path ie. not a dir OR a file
-
-			fmt.Println("Path is not a directory")
-
-			// notify the client that it is not a dir with error code "1"
-			w.WriteByte(1)
-			w.Flush()
-
-		} else { // is a path, but is it a dir or a file?
-
-			// check if the source is indeed a directory or not
-			if !src.IsDir() {
-
-				fmt.Println("Path is not a directory")
-
-				// notify the client that it is not a dir with error code "1"
-				w.WriteByte(1)
-				w.Flush()
-
-			} else { // success!
-
-				// notify success to client (no specific code, just not 1 or 0)
-				w.WriteByte(2)
-				w.Flush()
-
-				// create a clean path that the user can display on the cmd line
-				fmt.Printf("Path \"%s\" is a directory\n", targetPath)
-
-				// send the new path back to the user
-				w.WriteString(targetPath + "\n")
-				w.Flush()
-			}
-		}
-
 		fmt.Println("Fin cd")
-
-		// the below cases will entail the logging of a file in the mdservice, telling
-		// the client which storage node to use, where to access files, sending public
-		// keys, permissions, etc.
 
 	case 5: // request
 		fmt.Println("In request")
-
-		//get currentDir
-		currentDir, _ := r.ReadString('\n')
-		currentDir = strings.TrimSpace(currentDir)
-
-		// receive filename from client
-		filename, _ := r.ReadString('\n')
-		filename = strings.TrimSpace(filename)
-
-		// Cleans the filepath for proper access use
-
-		if !path.IsAbs(filename) {
-			filename = path.Join(currentDir, filename)
+		err := request(conn, r, w, &md)
+		if err != nil {
+			panic(err)
 		}
-
-		// check if the filename exists
-		src, err := os.Stat(md.getPath() + "files" + filename)
-		if err != nil { // not a path ie. not a dir OR a file
-
-			fmt.Println("File \"" + filename + "\" does not exist")
-
-			// notify the client that it is not existant with code "2"
-			w.WriteByte(1)
-			w.Flush()
-			break
-
-		} else if src.IsDir() { // notify the client that the file exists with code "1"
-
-			fmt.Println("Path \"" + filename + "\" is a directory")
-
-			// notify that is a dir
-			w.WriteByte(2)
-			w.Flush()
-		} else {
-
-			fmt.Println("File \"" + filename + "\" exists")
-
-			// notify success
-			w.WriteByte(3)
-			w.Flush()
-		}
-
-		hash, unid, protected, err := getFile(md.getPath() + "files" + filename)
-
-		if protected {
-			w.WriteByte(1)
-			w.Flush()
-		} else {
-			w.WriteByte(2)
-			w.Flush()
-		}
-
-		fmt.Println(hash + ", " + unid)
-
-		md.stnodeDB.View(func(tx *bolt.Tx) error {
-			// Assume bucket exists and has keys
-			fmt.Println(2)
-			b := tx.Bucket([]byte("stnodes"))
-
-			v := b.Get([]byte(unid))
-			fmt.Println(3)
-
-			if v == nil {
-
-				fmt.Println("No stnode for: " + unid)
-				w.WriteByte(1)
-				w.Flush()
-				return nil
-			}
-
-			w.WriteByte(2)
-			w.Flush()
-
-			var tmpStnode utils.Stnode
-			json.Unmarshal(v, &tmpStnode)
-
-			fmt.Println(tmpStnode)
-
-			fmt.Println("protocol: " + tmpStnode.Protocol + ", address: " + tmpStnode.NAddress)
-
-			w.WriteString(hash + "\n")
-			w.WriteString(tmpStnode.Protocol + "\n")
-			w.WriteString(tmpStnode.NAddress + "\n")
-			w.Flush()
-
-			return nil
-		})
-
 		fmt.Println("Fin request")
 
 	case 6: // send
 		fmt.Println("In send")
-
-		// get current dir
-		currentDir, _ := r.ReadString('\n')
-		currentDir = strings.TrimSpace(currentDir)
-
-		// receive filename from client
-		filename, _ := r.ReadString('\n')
-		filename = strings.TrimSpace(filename)
-
-		// clean the path
-		if !path.IsAbs(filename) {
-			filename = path.Join(currentDir, filename)
-		}
-
-		// check if the filename exists already
-		_, err := os.Stat(md.getPath() + "files" + filename)
-		if err != nil { // not a path ie. not a dir OR a file
-
-			fmt.Println("File \"" + filename + "\" does not exist")
-
-			// notify the client that it is not a dir with code "2"
-			w.WriteByte(2)
-			w.Flush()
-
-		} else { // notify the client that the file exists with error code "1"
-
-			w.WriteByte(1)
-			w.Flush()
-
-			break
-		}
-
-		// is the user encrypting the file?
-		protected := false
-		enc, _ := r.ReadByte()
-		if enc == 1 { // we are encrypting
-
-			protected = true
-			fmt.Println("Receiving encrypted file")
-			// send the pubkeys of users here
-
-			// get lenArgs
-			lenArgs, _ := r.ReadByte()
-
-			for i := 0; i < int(lenArgs); i++ {
-				fmt.Printf("About to query DB for time %d of %d\n", i, int(lenArgs))
-				md.userDB.View(func(tx *bolt.Tx) error {
-
-					b := tx.Bucket([]byte("users"))
-
-					// get the proposed uuid for a user
-					uuid, _ := r.ReadString('\n')
-					uuid = strings.TrimSpace(uuid)
-					uuidUint64, _ := strconv.ParseUint(uuid, 10, 64)
-
-					v := b.Get(itob(uuidUint64))
-
-					if v == nil {
-
-						fmt.Println("No user profile matching uuid: " + uuid)
-						w.WriteString("INV" + "\n")
-						w.Flush()
-						return nil
-					}
-
-					var tmpUser utils.User
-					json.Unmarshal(v, &tmpUser)
-
-					fmt.Println("Found user: " + tmpUser.Uname)
-
-					w.WriteString(uuid + "\n")
-					w.Write([]byte(tmpUser.Pubkey.N.String() + "\n"))
-					w.Write([]byte(strconv.Itoa(tmpUser.Pubkey.E) + "\n"))
-					w.Flush()
-
-					return nil
-				})
-
-			}
-
-		} else if enc == 2 {
-
-			//invalid cmd on client side
-			break
-			// else we are not
-		}
-
-		// get the hash of the file
-		hash := utils.ReadHashAsString(r)
-
-		var success byte
-		var unid string
-
-		fmt.Println(1)
-		md.stnodeDB.View(func(tx *bolt.Tx) error {
-			// Assume bucket exists and has keys
-			b := tx.Bucket([]byte("stnodes"))
-
-			c := b.Cursor()
-
-			for k, v := c.First(); k != nil; k, v = c.Next() {
-
-				fmt.Println(k)
-				fmt.Println(v)
-
-				w.WriteByte(1) // got a stnode
-				w.Flush()
-
-				var tmpStnode utils.Stnode
-				json.Unmarshal(v, &tmpStnode)
-
-				fmt.Println(tmpStnode)
-
-				fmt.Println("protocol: " + tmpStnode.Protocol + ", address: " + tmpStnode.NAddress)
-
-				w.WriteString(tmpStnode.Protocol + "\n")
-				w.WriteString(tmpStnode.NAddress + "\n")
-				unid = tmpStnode.Unid
-				w.Flush()
-
-				success, _ = r.ReadByte()
-				if success != 1 {
-					fmt.Println("Successful send to stnode from client")
-					return nil
-				}
-			}
-
-			w.WriteByte(2) // no more stnodes
-			w.Flush()
-
-			return nil
-		})
-
-		if success != 2 {
-			fmt.Println("No stnodes were available to the client")
-			break
-		}
-
-		success, _ = r.ReadByte()
-		if success != 1 {
-			fmt.Println("Error on client side sending file to stnode")
-			break
-		}
-
-		err = createFile(md.getPath()+"files"+filename, hash, unid, protected)
+		err := send(conn, r, w, &md)
 		if err != nil {
 			panic(err)
 		}
-
 		fmt.Println("Fin send")
 
 	case 10: // setup new user
-
-		// get the uuid for the new user
-		var newUser utils.User
-		err := md.userDB.Update(func(tx *bolt.Tx) (err error) {
-
-			// Retrieve the users bucket.
-			// This should be created when the DB is first opened.
-			b := tx.Bucket([]byte("users"))
-
-			// Generate ID for the user.
-			// This returns an error only if the Tx is closed or not writeable.
-			// That can't happen in an Update() call so I ignore the error check.
-			id, _ := b.NextSequence()
-			newUser.Uuid = uint64(id)
-			idStr := strconv.FormatUint(id, 10)
-
-			// receive the username	and public key for the new user
-			uname, _ := r.ReadString('\n')
-			pubKN, _ := r.ReadString('\n')
-			pubKE, _ := r.ReadString('\n')
-
-			newUser.Uname = strings.TrimSpace(uname)
-			newUser.Pubkey = &rsa.PublicKey{N: big.NewInt(0)}
-			newUser.Pubkey.N.SetString(strings.TrimSpace(pubKN), 10)
-
-			newUser.Pubkey.E, err = strconv.Atoi(strings.TrimSpace(pubKE))
-
-			fmt.Println("New user: " + newUser.Uname)
-			fmt.Println("recieved key")
-			fmt.Println("key stored in new user")
-
-			// Marshal user data into bytes.
-			buf, err := json.Marshal(newUser)
-			if err != nil {
-				return err
-			}
-
-			fmt.Println("writing uuid")
-
-			w.WriteString(idStr + "\n")
-			fmt.Println("written")
-
-			w.Flush()
-			fmt.Println("flushed")
-
-			// Persist bytes to users bucket.
-			return b.Put(itob(newUser.Uuid), buf)
-		})
+		fmt.Println("In user setup")
+		err := newUser(conn, r, w, &md)
 		if err != nil {
 			panic(err)
 		}
+		fmt.Println("Fin user setup")
 
 	case 11: // setup new storage node
-
-		// get unid for a new stnode
-		var newStnode utils.Stnode
-		err := md.stnodeDB.Update(func(tx *bolt.Tx) (err error) {
-
-			// Retrieve the users bucket.
-			// This should be created when the DB is first opened.
-			b := tx.Bucket([]byte("stnodes"))
-
-			// Generate ID for the stnode.
-			// This returns an error only if the Tx is closed or not writeable.
-			// That can't happen in an Update() call so I ignore the error check.
-			id, _ := b.NextSequence()
-			idStr := strconv.FormatUint(id, 10)
-			newStnode.Unid = idStr
-
-			// Receive the connection type and the address to be used for
-			// conneting to the stnode
-			protocol, _ := r.ReadString('\n')
-			nAddress, _ := r.ReadString('\n')
-
-			newStnode.Protocol = strings.TrimSpace(protocol)
-			newStnode.NAddress = strings.TrimSpace(nAddress)
-
-			fmt.Println("Received stnode " + idStr + "'s protocol: " + newStnode.Protocol)
-			fmt.Println("Received stnode " + idStr + "'s network address: " + newStnode.NAddress)
-
-			// Marshal stnode data into bytes.
-			buf, err := json.Marshal(newStnode)
-			if err != nil {
-				return err
-			}
-
-			fmt.Println("writing unid to stnode")
-
-			w.WriteString(idStr + "\n")
-			fmt.Println("written")
-
-			w.Flush()
-			fmt.Println("flushed")
-
-			// Persist bytes to stnodes bucket.
-			return b.Put([]byte(idStr), buf)
-		})
+		fmt.Println("In stnode setup")
+		err := newStnode(conn, r, w, &md)
 		if err != nil {
 			panic(err)
 		}
-
+		fmt.Println("Fin stnode setup")
 	}
 }
 
@@ -876,6 +349,9 @@ func Start(in TCPServer) {
 		// handle connection in new goroutine
 		go handleRequest(conn, in)
 	}
+
+	// mdservice closes db here etc
+	in.finish()
 }
 
 func createFile(fileout, hash, unid string, protected bool) error {
@@ -928,4 +404,554 @@ func handleRequest(conn net.Conn, in TCPServer) {
 
 	// print when a connection to the client closes along with the error (if any)
 	fmt.Printf("Connection close with code of %v and err of: %v\n", code, err)
+}
+
+// Case commands for Mdserv
+func ls(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (err error) {
+
+	// get current dir
+	// NOTE: here and in other locations, trimming whitespace may be more desirable
+	currentDir, _ := r.ReadString('\n')
+	currentDir = strings.TrimSpace(currentDir)
+
+	// get the length of arguments to the ls command
+	lenArgs, _ := r.ReadByte()
+	fmt.Printf("lenArgs = %v\n", lenArgs)
+
+	// the message which will be returned to the user, each entry will be
+	// comma separated for the client to interpret
+	msg := ""
+
+	// if only the ls command was called
+	if lenArgs == 1 {
+
+		fmt.Println(md.getPath() + "files" + currentDir)
+
+		files, err := ioutil.ReadDir(md.getPath() + "files" + currentDir)
+		if err != nil {
+			w.Flush()
+		}
+
+		// iterate over the files, and comma separate them while appending to msg
+		for _, file := range files {
+			if !utils.IsHidden(file.Name()) {
+				msg = msg + file.Name() + ","
+			}
+		}
+
+	}
+
+	// loop for dealing with one or more args
+	for i := 1; i < int(lenArgs); i++ {
+
+		// reading in this arg
+		targetPath, _ := r.ReadString('\n')
+		targetPath = strings.TrimSpace(targetPath)
+
+		if !path.IsAbs(targetPath) {
+			targetPath = path.Join(currentDir, targetPath)
+		}
+
+		fmt.Printf("  in loop read in targetPath: %s\n", (targetPath))
+		files, err := ioutil.ReadDir(md.getPath() + "files" + targetPath)
+		if err != nil {
+
+			// if it is not a directory, skip it and try the next arg
+			continue
+
+		} else {
+
+			msg = msg + targetPath + ":," // note comma to denote newline
+			for _, file := range files {
+				if !utils.IsHidden(file.Name()) {
+					msg = msg + file.Name() + ","
+				}
+			}
+			msg = msg + ","
+		}
+	}
+
+	// remove the last newline for graphical reasons
+	msg = strings.TrimSuffix(msg, ",")
+
+	// add the newline back in for some bizarre reaason? not sure why,
+	// don't remove without testing effects on all types of ls command
+	w.WriteString(msg + ", ")
+	w.Flush()
+
+	// print for terminal's sake
+	return nil
+}
+
+func mkdir(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (err error) {
+
+	// get currentDir
+	currentDir, _ := r.ReadString('\n')
+	currentDir = strings.TrimSpace(currentDir)
+
+	// get lenArgs for mkdir
+	lenArgs, _ := r.ReadByte()
+	fmt.Printf("lenArgs = %v\n", lenArgs)
+
+	// if no more than "mkdir" is sent, nothing will happen
+	// if errors occur, the dir will just not be made
+	for i := 1; i < int(lenArgs); i++ {
+
+		fmt.Printf("  in loop at pos %d ready to read\n", i)
+
+		// for each arg, get the target path
+		targetPath, _ := r.ReadString('\n')
+		targetPath = strings.TrimSpace(targetPath)
+
+		if !path.IsAbs(targetPath) {
+			targetPath = path.Join(currentDir, targetPath)
+		}
+
+		// print the target for terminal's sake
+		fmt.Printf("  in loop read in targetPath: %s", targetPath)
+
+		// MkdirAll creates an entire file path if some dirs are missing
+		if !utils.IsHidden(targetPath) {
+			os.MkdirAll(md.getPath()+"files"+targetPath, 0777)
+		}
+	}
+	return nil
+}
+
+func rmdir(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (err error) {
+
+	// get currentDir
+	currentDir, _ := r.ReadString('\n')
+	currentDir = strings.TrimSpace(currentDir)
+
+	// get len args for rmdir
+	lenArgs, _ := r.ReadByte()
+	fmt.Printf("lenArgs = %v\n", lenArgs)
+
+	// only does something if more than "rmdir" is called, as above
+	for i := 1; i < int(lenArgs); i++ {
+
+		fmt.Printf("  in loop at pos %d ready to read\n", i)
+
+		targetPath, _ := r.ReadString('\n')
+		targetPath = strings.TrimSpace(targetPath)
+
+		if !path.IsAbs(targetPath) {
+			targetPath = path.Join(currentDir, targetPath)
+		}
+
+		fmt.Printf("  in loop read in targetPath: %s", targetPath)
+
+		// this will only remove a dir that is empty, else it does nothing
+		// BUG-NOTE: this command will also currently delete files (there is not
+		// a different command to rmdir an rm in golang), so a check to make sure
+		// the targetPath is a dir should take place (sample code for checking if
+		// a path is a dir or a file is found in "cd" below).
+		// NOTE: a nice to have would be a recursive remove similar to rm -rf,
+		// but this is not needed
+		if !utils.IsHidden(targetPath) {
+			os.Remove(md.getPath() + "files" + targetPath)
+		}
+	}
+	return nil
+}
+
+func cd(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (err error) {
+
+	// get current dir and target path
+	currentDir, _ := r.ReadString('\n')
+	targetPath, _ := r.ReadString('\n')
+
+	currentDir = strings.TrimSpace(currentDir)
+	targetPath = strings.TrimSpace(targetPath)
+
+	if !path.IsAbs(targetPath) {
+		targetPath = path.Join(currentDir, targetPath)
+	}
+
+	// print for terminal's sake
+	fmt.Printf("currentDir = %s\n", currentDir)
+	fmt.Printf("targetPath = %s\n", targetPath)
+
+	// check if the source dir exist
+	src, err := os.Stat(md.getPath() + "files" + targetPath)
+	if err != nil || utils.IsHidden(targetPath) { // not a path ie. not a dir OR a file
+
+		fmt.Println("Path is not a directory")
+
+		// notify the client that it is not a dir with error code "1"
+		w.WriteByte(1)
+		w.Flush()
+
+	} else { // is a path, but is it a dir or a file?
+
+		// check if the source is indeed a directory or not
+		if !src.IsDir() {
+
+			fmt.Println("Path is not a directory")
+
+			// notify the client that it is not a dir with error code "1"
+			w.WriteByte(1)
+			w.Flush()
+
+		} else { // success!
+
+			// notify success to client (no specific code, just not 1 or 0)
+			w.WriteByte(2)
+			w.Flush()
+
+			// create a clean path that the user can display on the cmd line
+			fmt.Printf("Path \"%s\" is a directory\n", targetPath)
+
+			// send the new path back to the user
+			w.WriteString(targetPath + "\n")
+			w.Flush()
+		}
+	}
+	return nil
+}
+
+func request(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (err error) {
+
+	//get currentDir
+	currentDir, _ := r.ReadString('\n')
+	currentDir = strings.TrimSpace(currentDir)
+
+	// receive filename from client
+	filename, _ := r.ReadString('\n')
+	filename = strings.TrimSpace(filename)
+
+	// Cleans the filepath for proper access use
+
+	if !path.IsAbs(filename) {
+		filename = path.Join(currentDir, filename)
+	}
+
+	// check if the filename exists
+	src, err := os.Stat(md.getPath() + "files" + filename)
+	if err != nil || utils.IsHidden(filename) { // not a path ie. not a dir OR a file
+
+		fmt.Println("File \"" + filename + "\" does not exist")
+
+		// notify the client that it is not existant with code "2"
+		w.WriteByte(1)
+		w.Flush()
+		return nil
+
+	} else if src.IsDir() { // notify the client that the file exists with code "1"
+
+		fmt.Println("Path \"" + filename + "\" is a directory")
+
+		// notify that is a dir
+		w.WriteByte(2)
+		w.Flush()
+	} else {
+
+		fmt.Println("File \"" + filename + "\" exists")
+
+		// notify success
+		w.WriteByte(3)
+		w.Flush()
+	}
+
+	hash, unid, protected, err := getFile(md.getPath() + "files" + filename)
+
+	if protected {
+		w.WriteByte(1)
+		w.Flush()
+	} else {
+		w.WriteByte(2)
+		w.Flush()
+	}
+
+	fmt.Println(hash + ", " + unid)
+
+	md.stnodeDB.View(func(tx *bolt.Tx) error {
+		// Assume bucket exists and has keys
+		fmt.Println(2)
+		b := tx.Bucket([]byte("stnodes"))
+
+		v := b.Get([]byte(unid))
+		fmt.Println(3)
+
+		if v == nil {
+
+			fmt.Println("No stnode for: " + unid)
+			w.WriteByte(1)
+			w.Flush()
+			return nil
+		}
+
+		w.WriteByte(2)
+		w.Flush()
+
+		var tmpStnode utils.Stnode
+		json.Unmarshal(v, &tmpStnode)
+
+		fmt.Println(tmpStnode)
+
+		fmt.Println("protocol: " + tmpStnode.Protocol + ", address: " + tmpStnode.NAddress)
+
+		w.WriteString(hash + "\n")
+		w.WriteString(tmpStnode.Protocol + "\n")
+		w.WriteString(tmpStnode.NAddress + "\n")
+		w.Flush()
+
+		return nil
+	})
+
+	return nil
+}
+
+func send(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (err error) {
+
+	// get current dir
+	currentDir, _ := r.ReadString('\n')
+	currentDir = strings.TrimSpace(currentDir)
+
+	// receive filename from client
+	filename, _ := r.ReadString('\n')
+	filename = strings.TrimSpace(filename)
+
+	// clean the path
+	if !path.IsAbs(filename) {
+		filename = path.Join(currentDir, filename)
+	}
+
+	// check if the filename exists already
+	_, err = os.Stat(md.getPath() + "files" + filename)
+	if err != nil && !utils.IsHidden(filename) { // not a path ie. not a dir OR a file
+
+		fmt.Println("File \"" + filename + "\" does not exist")
+
+		// notify the client that it is not already on system
+		w.WriteByte(2)
+		w.Flush()
+
+	} else { // notify the client that the file exists with error code "1"
+
+		w.WriteByte(1)
+		w.Flush()
+
+		return nil
+	}
+
+	// is the user encrypting the file?
+	protected := false
+	enc, _ := r.ReadByte()
+	if enc == 1 { // we are encrypting
+
+		protected = true
+		fmt.Println("Receiving encrypted file")
+		// send the pubkeys of users here
+
+		// get lenArgs
+		lenArgs, _ := r.ReadByte()
+
+		for i := 0; i < int(lenArgs); i++ {
+			fmt.Printf("About to query DB for time %d of %d\n", i, int(lenArgs))
+			md.userDB.View(func(tx *bolt.Tx) error {
+
+				b := tx.Bucket([]byte("users"))
+
+				// get the proposed uuid for a user
+				uuid, _ := r.ReadString('\n')
+				uuid = strings.TrimSpace(uuid)
+				uuidUint64, _ := strconv.ParseUint(uuid, 10, 64)
+
+				v := b.Get(itob(uuidUint64))
+
+				if v == nil {
+
+					fmt.Println("No user profile matching uuid: " + uuid)
+					w.WriteString("INV" + "\n")
+					w.Flush()
+					return nil
+				}
+
+				var tmpUser utils.User
+				json.Unmarshal(v, &tmpUser)
+
+				fmt.Println("Found user: " + tmpUser.Uname)
+
+				w.WriteString(uuid + "\n")
+				w.Write([]byte(tmpUser.Pubkey.N.String() + "\n"))
+				w.Write([]byte(strconv.Itoa(tmpUser.Pubkey.E) + "\n"))
+				w.Flush()
+
+				return nil
+			})
+
+		}
+
+	} else if enc == 2 {
+
+		//invalid cmd on client side
+		return nil
+		// else we are not
+	}
+
+	// get the hash of the file
+	hash := utils.ReadHashAsString(r)
+
+	var success byte
+	var unid string
+
+	fmt.Println(1)
+	md.stnodeDB.View(func(tx *bolt.Tx) error {
+		// Assume bucket exists and has keys
+		b := tx.Bucket([]byte("stnodes"))
+
+		c := b.Cursor()
+
+		for k, v := c.First(); k != nil; k, v = c.Next() {
+
+			fmt.Println(k)
+			fmt.Println(v)
+
+			w.WriteByte(1) // got a stnode
+			w.Flush()
+
+			var tmpStnode utils.Stnode
+			json.Unmarshal(v, &tmpStnode)
+
+			fmt.Println(tmpStnode)
+
+			fmt.Println("protocol: " + tmpStnode.Protocol + ", address: " + tmpStnode.NAddress)
+
+			w.WriteString(tmpStnode.Protocol + "\n")
+			w.WriteString(tmpStnode.NAddress + "\n")
+			unid = tmpStnode.Unid
+			w.Flush()
+
+			success, _ = r.ReadByte()
+			if success != 1 {
+				fmt.Println("Successful send to stnode from client")
+				return nil
+			}
+		}
+
+		w.WriteByte(2) // no more stnodes
+		w.Flush()
+
+		return nil
+	})
+
+	if success != 2 {
+		fmt.Println("No stnodes were available to the client")
+		return nil
+	}
+
+	success, _ = r.ReadByte()
+	if success != 1 {
+		fmt.Println("Error on client side sending file to stnode")
+		return nil
+	}
+
+	err = createFile(md.getPath()+"files"+filename, hash, unid, protected)
+	if err != nil {
+		panic(err)
+	}
+	return nil
+}
+
+func newUser(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (err error) {
+
+	// get the uuid for the new user
+	var newUser utils.User
+	err = md.userDB.Update(func(tx *bolt.Tx) (err error) {
+
+		// Retrieve the users bucket.
+		// This should be created when the DB is first opened.
+		b := tx.Bucket([]byte("users"))
+
+		// Generate ID for the user.
+		// This returns an error only if the Tx is closed or not writeable.
+		// That can't happen in an Update() call so I ignore the error check.
+		id, _ := b.NextSequence()
+		newUser.Uuid = uint64(id)
+		idStr := strconv.FormatUint(id, 10)
+
+		// receive the username	and public key for the new user
+		uname, _ := r.ReadString('\n')
+		pubKN, _ := r.ReadString('\n')
+		pubKE, _ := r.ReadString('\n')
+
+		newUser.Uname = strings.TrimSpace(uname)
+		newUser.Pubkey = &rsa.PublicKey{N: big.NewInt(0)}
+		newUser.Pubkey.N.SetString(strings.TrimSpace(pubKN), 10)
+
+		newUser.Pubkey.E, err = strconv.Atoi(strings.TrimSpace(pubKE))
+
+		fmt.Println("New user: " + newUser.Uname)
+		fmt.Println("recieved key")
+		fmt.Println("key stored in new user")
+
+		// Marshal user data into bytes.
+		buf, err := json.Marshal(newUser)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("writing uuid")
+		w.WriteString(idStr + "\n")
+		fmt.Println("written")
+
+		w.Flush()
+		fmt.Println("flushed")
+
+		// Persist bytes to users bucket.
+		return b.Put(itob(newUser.Uuid), buf)
+	})
+
+	return err
+}
+
+func newStnode(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (err error) {
+
+	// get unid for a new stnode
+	var newStnode utils.Stnode
+	err = md.stnodeDB.Update(func(tx *bolt.Tx) (err error) {
+
+		// Retrieve the users bucket.
+		// This should be created when the DB is first opened.
+		b := tx.Bucket([]byte("stnodes"))
+
+		// Generate ID for the stnode.
+		// This returns an error only if the Tx is closed or not writeable.
+		// That can't happen in an Update() call so I ignore the error check.
+		id, _ := b.NextSequence()
+		idStr := strconv.FormatUint(id, 10)
+		newStnode.Unid = idStr
+
+		// Receive the connection type and the address to be used for
+		// conneting to the stnode
+		protocol, _ := r.ReadString('\n')
+		nAddress, _ := r.ReadString('\n')
+
+		newStnode.Protocol = strings.TrimSpace(protocol)
+		newStnode.NAddress = strings.TrimSpace(nAddress)
+
+		fmt.Println("Received stnode " + idStr + "'s protocol: " + newStnode.Protocol)
+		fmt.Println("Received stnode " + idStr + "'s network address: " + newStnode.NAddress)
+
+		// Marshal stnode data into bytes.
+		buf, err := json.Marshal(newStnode)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("writing unid to stnode")
+
+		w.WriteString(idStr + "\n")
+		fmt.Println("written")
+
+		w.Flush()
+		fmt.Println("flushed")
+
+		// Persist bytes to stnodes bucket.
+		return b.Put([]byte(idStr), buf)
+	})
+
+	return err
 }

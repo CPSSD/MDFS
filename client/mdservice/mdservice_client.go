@@ -180,16 +180,6 @@ func main() {
 				panic(err)
 			}
 
-		case "pwd":
-			// no calls to server, just print what we have stored here
-			fmt.Print(currentDir + "\n")
-
-		case "exit":
-			// leave the program. The server will notice that the client has
-			// disconnected and will close the TCP connection on its side
-			// without error.
-			os.Exit(0)
-
 		case "request":
 			err := request(r, w, currentDir, args, &thisUser)
 			if err != nil {
@@ -201,6 +191,16 @@ func main() {
 			if err != nil {
 				panic(err)
 			}
+
+		case "pwd":
+			// no calls to server, just print what we have stored here
+			fmt.Print(currentDir + "\n")
+
+		case "exit":
+			// leave the program. The server will notice that the client has
+			// disconnected and will close the TCP connection on its side
+			// without error.
+			os.Exit(0)
 
 		default:
 
@@ -377,6 +377,8 @@ func send(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string, th
 		return err
 	}
 
+	fmt.Println("Base of file :" + path.Base(args[1]))
+
 	// Format the file to send (absolute or relative)
 	filepath := ""
 	if path.IsAbs(args[1]) { // if we are trying to send an absolute filepath
@@ -431,7 +433,7 @@ func send(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string, th
 	exists, _ := r.ReadByte()
 	if exists == 1 {
 
-		fmt.Println("File already exists")
+		fmt.Println("Bad send request, check file name again")
 		return nil
 	} else if exists != 2 {
 
