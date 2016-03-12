@@ -103,7 +103,11 @@ func main() {
 	// may change slightly to include extra data
 	var thisUser utils.User
 
-	conn, _ := net.Dial(protocol, socket)
+	conn, err := net.Dial(protocol, socket)
+	if err != nil {
+		fmt.Println("No mdserv available through " + protocol + " connection at " + socket)
+		os.Exit(0)
+	}
 	defer conn.Close()
 
 	// read and write buffer to the mdserv
@@ -119,7 +123,7 @@ func main() {
 	// and private key of this user will be locally accessible when
 	// needed by the user client in a location defined in the
 	// setup method.
-	err := setup(r, w, &thisUser)
+	err = setup(r, w, &thisUser)
 	if err != nil {
 		panic(err)
 	}
@@ -184,7 +188,7 @@ func main() {
 			// leave the program. The server will notice that the client has
 			// disconnected and will close the TCP connection on its side
 			// without error.
-			os.Exit(1)
+			os.Exit(0)
 
 		case "request":
 			err := request(r, w, currentDir, args, &thisUser)
@@ -369,28 +373,11 @@ func cd(r *bufio.Reader, w *bufio.Writer, currentDir *string, args []string) (er
 
 func send(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string, thisUser *utils.User) (err error) {
 
-	// should have args format:
-	// send [local filename] [remote filename]
-	// Local filename can be a relative or absolute path
-	// Remote filename should not be the name of an existing
-	// file, else the remote file will be overwritten
 	if len(args) < 2 {
 		return err
 	}
 
-	// START SENDCODE BLOCK
-	err = w.WriteByte(6)
-	w.Flush()
-	if err != nil {
-		panic(err)
-	}
-	// END SENDCODE BLOCK
-
-	// Send current dir
-	w.WriteString(currentDir + "\n")
-	w.Flush()
-
-	// Format the file to send
+	// Format the file to send (absolute or relative)
 	filepath := ""
 	if path.IsAbs(args[1]) { // if we are trying to send an absolute filepath
 
@@ -405,7 +392,7 @@ func send(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string, th
 		filepath = path.Join(wd, args[1])
 	}
 
-	// ensure the file is existant
+	// ensure the file is existant locally
 	src, err := os.Stat(filepath)
 	if err != nil {
 
@@ -419,15 +406,26 @@ func send(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string, th
 
 	} else {
 
-		fmt.Println("filepath to send is: \"" + filepath + "\"")
+		fmt.Println("Filepath to send is: \"" + filepath + "\"")
 
 	}
 
-	fmt.Println("Sending filename")
+	// START SENDCODE BLOCK - tell mdserv we are sending a file
+	err = w.WriteByte(6)
+	w.Flush()
+	if err != nil {
+		panic(err)
+	}
+	// END SENDCODE BLOCK
+
+	// Send current dir
+	w.WriteString(currentDir + "\n")
+	fmt.Println("Send: current dir: " + currentDir)
 	// Send filename to mdserv
 	w.WriteString(path.Base(filepath) + "\n")
+	fmt.Println("Send: filename: " + filepath)
+
 	w.Flush()
-	fmt.Println("Sent")
 
 	// Get fail if file exists already
 	exists, _ := r.ReadByte()
@@ -496,6 +494,7 @@ func send(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string, th
 		}
 
 		filepath = encrypFile
+		fmt.Println("Encrypted file to: " + filepath + " from " + encrypFile)
 
 	} else {
 
@@ -516,6 +515,7 @@ func send(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string, th
 	fmt.Println("File does not exist, sending hash")
 
 	// Send hash to mdserv
+	fmt.Println("Sending hash to mdserv: " + checksum)
 	err = utils.WriteHash(w, hash)
 	if err != nil {
 		return err
@@ -575,6 +575,7 @@ func send(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string, th
 	}
 
 	// send hash to stnode
+	fmt.Println("Sending hash to stnode: " + checksum)
 	err = utils.WriteHash(ws, hash)
 	if err != nil {
 		return err
@@ -624,7 +625,7 @@ func request(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string,
 	success, _ := r.ReadByte()
 	if success != 3 {
 
-		fmt.Println("Invalid file request")
+		fmt.Printf("Invalid file request with response: %v\n", success)
 		return nil
 	}
 
@@ -646,6 +647,7 @@ func request(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string,
 	nAddress, _ := r.ReadString('\n')
 
 	hash = strings.TrimSpace(hash)
+	fmt.Println("Received hash: " + hash)
 	protocol = strings.TrimSpace(protocol)
 	nAddress = strings.TrimSpace(nAddress)
 

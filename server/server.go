@@ -668,16 +668,11 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 		fmt.Println(1)
 		md.stnodeDB.View(func(tx *bolt.Tx) error {
 			// Assume bucket exists and has keys
-			fmt.Println(2)
 			b := tx.Bucket([]byte("stnodes"))
-			fmt.Println(3)
 
 			c := b.Cursor()
 
-			fmt.Println(4)
 			for k, v := c.First(); k != nil; k, v = c.Next() {
-
-				fmt.Println(5)
 
 				fmt.Println(k)
 				fmt.Println(v)
@@ -699,7 +694,8 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 
 				success, _ = r.ReadByte()
 				if success != 1 {
-					break
+					fmt.Println("Successful send to stnode from client")
+					return nil
 				}
 			}
 
@@ -926,6 +922,8 @@ func handleRequest(conn net.Conn, in TCPServer) {
 		// Print the code to terminal
 		fmt.Printf("Read in code: %v\n", code)
 		in.handleCode(code, conn, r, w)
+		r = bufio.NewReader(conn)
+		w = bufio.NewWriter(conn)
 
 		// wait to read the next code from the client
 		code, err = r.ReadByte()
