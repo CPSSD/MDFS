@@ -1,10 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"github.com/CPSSD/MDFS/config"
-	"github.com/CPSSD/MDFS/mdservice"
 	"os"
+	"strings"
 )
 
 func main() {
@@ -19,13 +20,14 @@ func main() {
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Print("\nEnter selection: ")
 	selection, _ := reader.ReadString('\n')
+	selection = strings.TrimSpace(selection)
 
 	switch selection {
 	case "1": // configure client software
-		continue
+		break
 
 	case "2": // configure storage node
-		path, port := getConfig("files")
+		path, port := getConfig(reader, "files")
 		err := setup(path, port, "./storagenode/config/", "stnode_conf.json")
 		if err != nil {
 			panic(err)
@@ -35,7 +37,7 @@ func main() {
 		fmt.Printf("The configuration file can be found at %s.stnode_conf.json.\n", path)
 
 	case "3": // configure metadata service
-		path, port := getConfig("metadata")
+		path, port := getConfig(reader, "metadata")
 		err := setup(path, port, "./mdservice/config/", "mdservice_conf.json")
 		if err != nil {
 			panic(err)
@@ -49,20 +51,25 @@ func main() {
 
 		fmt.Println("Metadata service has been initialised.")
 		fmt.Printf("The configuration file can be found at %s.mdservice_conf.json.\n", path)
+
+	default:
+		fmt.Println("Invalid Selection.")
 	}
 }
 
-func getConfig(string store) (path string, port string) {
+func getConfig(reader *bufio.Reader, store string) (path string, port string) {
 
 	// get desired storage location
 	fmt.Printf("Please enter the absolute path to the directory in which you would like to store the %s.\n", store)
 	fmt.Println("Please ensure you include the trailing directory slash")
 	fmt.Print("Path: ")
 	path, _ = reader.ReadString('\n')
+	path = strings.TrimSpace(path)
 
 	fmt.Println("Please enter the port you want the service to listen on.")
-	fmt.Println("Port: ")
+	fmt.Print("Port: ")
 	port, _ = reader.ReadString('\n')
+	port = strings.TrimSpace(port)
 
 	return path, port
 }
