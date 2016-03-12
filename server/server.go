@@ -876,9 +876,6 @@ func Start(in TCPServer) {
 		// handle connection in new goroutine
 		go handleRequest(conn, in)
 	}
-
-	// mdservice closes db here etc
-	in.finish()
 }
 
 func createFile(fileout, hash, unid string, protected bool) error {

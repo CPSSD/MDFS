@@ -1,4 +1,4 @@
-package main
+package mdservice
 
 import (
 	"encoding/json"
@@ -7,32 +7,26 @@ import (
 	"os"
 )
 
-func main() {
+func Setup(path string, port string) error {
 
-	err := os.MkdirAll(utils.GetUserHome()+"/.mdservice/", 0700)
+	// create the supplied file path
+	err := os.MkdirAll(path, 0700)
 	if err != nil {
-		panic(err)
-	}
-	err = os.MkdirAll(utils.GetUserHome()+"/.mdservice/files/", 0700)
-	if err != nil {
-		panic(err)
+		return err
 	}
 
-	fo, err := os.Create(utils.GetUserHome() + "/.mdservice/.mdservice_conf.json")
+	// create a subdirectory called files
+	err = os.MkdirAll(path+"files/", 0700)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
+	// get the sample configuration file from the repo
 	conf := config.ParseConfiguration("./mdservice/config/mdservice_conf.json")
-	conf.Path = utils.GetUserHome() + "/.mdservice/"
+	conf.Path = path // change the path variable
+	conf.Port = port // change the port variable
 
-	encoder := json.NewEncoder(fo)
-
-	err = encoder.Encode(conf)
-
-	if err != nil {
-		panic(err)
-	}
-
-	fo.Close()
+	// encode the new object to a json file
+	err = config.SetConfiguration(conf, path+"stnode_conf.json")
+	return err
 }
