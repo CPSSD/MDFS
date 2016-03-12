@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"github.com/CPSSD/MDFS/config"
 	"github.com/CPSSD/MDFS/utils"
 	"os"
