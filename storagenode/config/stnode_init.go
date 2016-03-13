@@ -18,7 +18,7 @@ func main() {
 	conf.Path = utils.GetUserHome() + "/.mdfs/stnode/"
 
 	// save the new configuration to file
-	err = config.SetConfiguration(conf, utils.GetUserHome()+"/.mdfs/stnode/stnode_conf.json")
+	err = config.SetConfiguration(conf, conf.Path+".stnode_conf.json")
 	if err != nil {
 		panic(err)
 	}
