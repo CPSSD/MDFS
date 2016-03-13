@@ -22,7 +22,7 @@ func main() {
 	conf.Path = utils.GetUserHome() + "/.mdfs/mdservice/"
 
 	// save the new configuration to file
-	err = config.SetConfiguration(conf, conf.Paht+".mdservice.json")
+	err = config.SetConfiguration(conf, conf.Path+".mdservice.json")
 	if err != nil {
 		panic(err)
 	}
