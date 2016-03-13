@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/CPSSD/MDFS/config"
+	"github.com/CPSSD/MDFS/utils"
 	"os"
 	"strings"
 )
@@ -11,6 +12,7 @@ import (
 func main() {
 
 	fmt.Println("This is the installation program for the MDFS")
+	fmt.Println("----------------------------------------------------------")
 	fmt.Println("Please select which software you would like to install")
 	fmt.Println("1) Client software")
 	fmt.Println("2) Storage node software")
@@ -20,58 +22,58 @@ func main() {
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Print("\nEnter selection: ")
 	selection, _ := reader.ReadString('\n')
+	fmt.Println("----------------------------------------------------------")
+
 	selection = strings.TrimSpace(selection)
+	home := utils.GetUserHome()
 
 	switch selection {
 	case "1": // configure client software
 		break
 
 	case "2": // configure storage node
-		path, port := getConfig(reader, "files")
+		path := home + "/.mdfs/stnode"
+		port := getConfig(reader)
 		err := setup(path, port, "./storagenode/config/", "stnode_conf.json")
 		if err != nil {
 			panic(err)
 		}
 
 		fmt.Println("Storage node has been initialised.")
-		fmt.Printf("The configuration file can be found at %s.stnode_conf.json.\n", path)
+		fmt.Printf("The configuration file can be found at %s/.stnode_conf.json.\n", path)
 
 	case "3": // configure metadata service
-		path, port := getConfig(reader, "metadata")
+		path := home + "/.mdfs/mdservice"
+		port := getConfig(reader)
 		err := setup(path, port, "./mdservice/config/", "mdservice_conf.json")
 		if err != nil {
 			panic(err)
 		}
 
 		// create a subdirectory called files
-		err = os.MkdirAll(path+"files/", 0700)
+		err = os.MkdirAll(path+"/files", 0700)
 		if err != nil {
 			panic(err)
 		}
 
 		fmt.Println("Metadata service has been initialised.")
-		fmt.Printf("The configuration file can be found at %s.mdservice_conf.json.\n", path)
+		fmt.Printf("The configuration file can be found at %s/.mdservice_conf.json.\n", path)
 
 	default:
 		fmt.Println("Invalid Selection.")
 	}
 }
 
-func getConfig(reader *bufio.Reader, store string) (path string, port string) {
+func getConfig(reader *bufio.Reader) string {
 
-	// get desired storage location
-	fmt.Printf("Please enter the absolute path to the directory in which you would like to store the %s.\n", store)
-	fmt.Println("Please ensure you include the trailing directory slash")
-	fmt.Print("Path: ")
-	path, _ = reader.ReadString('\n')
-	path = strings.TrimSpace(path)
-
-	fmt.Println("Please enter the port you want the service to listen on.")
+	// listen on this port
+	fmt.Println("Please enter the port you want the service to listen on.\n")
 	fmt.Print("Port: ")
-	port, _ = reader.ReadString('\n')
+	port, _ := reader.ReadString('\n')
+	fmt.Println("----------------------------------------------------------")
 	port = strings.TrimSpace(port)
 
-	return path, port
+	return port
 }
 
 func setup(path string, port string, sample string, fname string) error {
@@ -88,6 +90,6 @@ func setup(path string, port string, sample string, fname string) error {
 	conf.Port = port // change the port variable
 
 	// encode the new object to a json file
-	err = config.SetConfiguration(conf, path+fname)
+	err = config.SetConfiguration(conf, path+"/."+fname)
 	return err
 }

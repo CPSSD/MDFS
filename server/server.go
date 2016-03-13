@@ -72,7 +72,7 @@ func (s *Server) setUnid(unid string) (err error) {
 	fmt.Println(s.getUnid())
 	s.conf.Unid = unid
 	fmt.Println(s.getUnid())
-	err = config.SetConfiguration(s.conf, utils.GetUserHome()+"/.stnode/stnode_conf.json")
+	err = config.SetConfiguration(s.conf, utils.GetUserHome()+"/.mdfs/stnode/stnode_conf.json")
 	if err != nil {
 		return err
 	}
@@ -81,7 +81,7 @@ func (s *Server) setUnid(unid string) (err error) {
 
 // StorageNode methods
 func (st *StorageNode) parseConfig() {
-	st.conf = config.ParseConfiguration(utils.GetUserHome() + "/.stnode/stnode_conf.json")
+	st.conf = config.ParseConfiguration(utils.GetUserHome() + "/.mdfs/stnode/stnode_conf.json")
 }
 
 func (st *StorageNode) setup() (err error) {
@@ -138,7 +138,7 @@ func (st *StorageNode) finish() {
 // MDService methods
 // initialise its memeber variable with values from config file
 func (md *MDService) parseConfig() {
-	md.conf = config.ParseConfiguration(utils.GetUserHome() + "/.mdservice/.mdservice_conf.json")
+	md.conf = config.ParseConfiguration(utils.GetUserHome() + "/.mdfs/mdservice/.mdservice_conf.json")
 }
 
 // open user and stnode db
