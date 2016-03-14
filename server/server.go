@@ -68,9 +68,9 @@ func (st StorageNode) getUnid() string {
 func (st *StorageNode) setUnid(unid string) (err error) {
 
 	fmt.Println(st.getUnid())
-	s.conf.Unid = unid
+	st.conf.Unid = unid
 	fmt.Println(st.getUnid())
-	err = config.SetConfiguration(s.conf, utils.GetUserHome()+"/.mdfs/stnode/stnode_conf.json")
+	err = config.SetConfiguration(st.conf, utils.GetUserHome()+"/.mdfs/stnode/stnode_conf.json")
 	if err != nil {
 		return err
 	}
