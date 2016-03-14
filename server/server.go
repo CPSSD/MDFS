@@ -41,8 +41,6 @@ type TCPServer interface {
 	getProtocol() string
 	getPort() string
 	getHost() string
-	getUnid() string
-	setUnid(string) error
 	handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bufio.Writer)
 }
 
@@ -63,15 +61,15 @@ func (s Server) getHost() string {
 	return s.conf.Host
 }
 
-func (s Server) getUnid() string {
-	return s.conf.Unid
+func (st StorageNode) getUnid() string {
+	return st.conf.Unid
 }
 
-func (s *Server) setUnid(unid string) (err error) {
+func (st *StorageNode) setUnid(unid string) (err error) {
 
-	fmt.Println(s.getUnid())
+	fmt.Println(st.getUnid())
 	s.conf.Unid = unid
-	fmt.Println(s.getUnid())
+	fmt.Println(st.getUnid())
 	err = config.SetConfiguration(s.conf, utils.GetUserHome()+"/.mdfs/stnode/stnode_conf.json")
 	if err != nil {
 		return err
