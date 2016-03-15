@@ -215,7 +215,7 @@ func main() {
 			}
 
 		case "group-remove":
-			err := groupAdd(r, w, args, &thisUser)
+			err := groupRemove(r, w, args, &thisUser)
 			if err != nil {
 				panic(err)
 			}
@@ -854,8 +854,8 @@ func groupRemove(r *bufio.Reader, w *bufio.Writer, args []string, thisUser *util
 	// args should take the format:
 	//   group-add GID UUID1 UUID2 ... UUIDN
 	if len(args) < 3 {
-		fmt.Println("Not enough arguments for call to groupadd:")
-		fmt.Println("Format should be: group-add GID UUID1 UUID2 ... UUIDN")
+		fmt.Println("Not enough arguments for call to group-remove:")
+		fmt.Println("Format should be: group-remove GID UUID1 UUID2 ... UUIDN")
 		return nil
 	}
 
@@ -881,23 +881,23 @@ func groupRemove(r *bufio.Reader, w *bufio.Writer, args []string, thisUser *util
 	// get success (1) or fail (2)
 	success, _ := r.ReadByte()
 	if success != 1 {
-		fmt.Println("You cannot add users to this group. Are you the owner?")
+		fmt.Println("You cannot remove users from this group. Are you the owner?")
 		return err
 	}
 
 	for i := 2; i < len(args); i++ {
 
-		// send uuid to add
+		// send uuid to remove
 		w.WriteString(args[i] + "\n")
 		fmt.Println("Wrote: " + args[i])
 		w.Flush()
 	}
 
-	// get uuids added
+	// get uuids removed
 	result, _ := r.ReadString('\n')
 	result = strings.TrimSuffix(strings.TrimSpace(result), ",")
 
-	fmt.Println("Added users: " + result + " to group " + args[1])
+	fmt.Println("Removed users: " + result + " from group " + args[1])
 
 	return err
 }

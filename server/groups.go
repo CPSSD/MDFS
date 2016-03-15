@@ -214,7 +214,7 @@ func groupRemove(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService)
 		return err
 	}
 
-	// get details for group to add to
+	// get details for group to remove from
 	gid, _ := r.ReadString('\n')
 	gid = strings.TrimSpace(gid)
 	uintGid, err := strconv.ParseUint(strings.TrimSpace(gid), 10, 64)
@@ -222,6 +222,7 @@ func groupRemove(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService)
 		return err
 	}
 
+	// ensure valid user and group
 	err = md.userDB.View(func(tx *bolt.Tx) error {
 
 		b := tx.Bucket([]byte("groups"))
@@ -272,7 +273,7 @@ func groupRemove(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService)
 		user, _ := r.ReadString('\n')
 		user = strings.TrimSpace(user)
 
-		fmt.Printf("  in loop read in user to add: %s\n", user)
+		fmt.Printf("  in loop read in user to remove: %s\n", user)
 
 		exists, _ := userExists(user, md.userDB)
 		if exists {
@@ -294,13 +295,17 @@ func groupRemove(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService)
 		var tmpGroup utils.Group
 		json.Unmarshal(v, &tmpGroup)
 
-		newUsers := ""
+		removedUsers := ""
 
 		for _, u := range users {
-			if !utils.Contains(u, tmpGroup.Members) {
-				tmpGroup.Members = append(tmpGroup.Members, u)
-				fmt.Println(u)
-				newUsers = newUsers + strconv.FormatUint(u, 10) + ", "
+			for i, member := range tmpGroup.Members {
+				if member == u {
+
+					fmt.Println(u)
+					tmpGroup.Members = append(tmpGroup.Members[:i], tmpGroup.Members[i+1:]...)
+					removedUsers = removedUsers + strconv.FormatUint(u, 10) + ", "
+					break
+				}
 			}
 		}
 
@@ -309,8 +314,8 @@ func groupRemove(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService)
 			return err
 		}
 
-		fmt.Println("writing users added")
-		w.WriteString(newUsers + "\n")
+		fmt.Println("writing users removed")
+		w.WriteString(removedUsers + "\n")
 		fmt.Println("written")
 		w.Flush()
 
