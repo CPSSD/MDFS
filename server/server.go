@@ -321,6 +321,22 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 			panic(err)
 		}
 		fmt.Println("Fin createGroup")
+
+	case 21:
+		fmt.Println("In groupAdd")
+		err := groupAdd(conn, r, w, &md)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println("Fin groupAdd")
+
+	case 22:
+		fmt.Println("In groupRemove")
+		err := groupRemove(conn, r, w, &md)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println("Fin groupRemove")
 	}
 }
 

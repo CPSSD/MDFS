@@ -78,3 +78,262 @@ func createGroup(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService)
 
 	return err
 }
+
+func groupAdd(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (err error) {
+
+	// get lenArgs
+	lenArgs, _ := r.ReadByte()
+	fmt.Printf("lenArgs = %v\n", lenArgs)
+
+	// get details for current accessor
+	uuid, _ := r.ReadString('\n')
+	uintUuid, err := strconv.ParseUint(strings.TrimSpace(uuid), 10, 64)
+	if err != nil {
+		return err
+	}
+
+	// get details for group to add to
+	gid, _ := r.ReadString('\n')
+	gid = strings.TrimSpace(gid)
+	uintGid, err := strconv.ParseUint(strings.TrimSpace(gid), 10, 64)
+	if err != nil {
+		return err
+	}
+
+	err = md.userDB.View(func(tx *bolt.Tx) error {
+
+		b := tx.Bucket([]byte("groups"))
+
+		v := b.Get(itob(uintGid))
+
+		fmt.Println("Trying to get: " + gid)
+
+		if v == nil {
+
+			w.WriteByte(2)
+			w.Flush()
+			return fmt.Errorf("Bad access")
+		}
+
+		var tmpGroup utils.Group
+		json.Unmarshal(v, &tmpGroup)
+
+		if tmpGroup.Owner != uintUuid {
+
+			fmt.Printf("Owner: %d, and uuid: %d", tmpGroup.Owner, uintUuid)
+
+			w.WriteByte(2)
+			w.Flush()
+			return fmt.Errorf("Bad access")
+		}
+
+		// authorised and group exists
+		w.WriteByte(1)
+		w.Flush()
+
+		return nil
+	})
+
+	if err != nil {
+
+		fmt.Println("Invalid access to group: " + strings.TrimSpace(gid))
+		return nil
+	}
+
+	var users []uint64
+
+	// read in all users
+	for i := 2; i < int(lenArgs); i++ {
+
+		fmt.Printf("  in loop at pos %d ready to read\n", i)
+
+		user, _ := r.ReadString('\n')
+		user = strings.TrimSpace(user)
+
+		fmt.Printf("  in loop read in user to add: %s\n", user)
+
+		exists, _ := userExists(user, md.userDB)
+		if exists {
+
+			uintUuid, _ := strconv.ParseUint(strings.TrimSpace(user), 10, 64)
+			users = append(users, uintUuid)
+		}
+	}
+
+	// add users to the group in the database
+	err = md.userDB.Update(func(tx *bolt.Tx) (err error) {
+
+		// get group bucket
+		b := tx.Bucket([]byte("groups"))
+
+		// we already know it exists from above
+		v := b.Get([]byte(strings.TrimSpace(gid)))
+
+		var tmpGroup utils.Group
+		json.Unmarshal(v, &tmpGroup)
+
+		newUsers := ""
+
+		for _, u := range users {
+			if !utils.Contains(u, tmpGroup.Members) {
+				tmpGroup.Members = append(tmpGroup.Members, u)
+				fmt.Println(u)
+				newUsers = newUsers + strconv.FormatUint(u, 10) + ", "
+			}
+		}
+
+		buf, err := json.Marshal(tmpGroup)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("writing users added")
+		w.WriteString(newUsers + "\n")
+		fmt.Println("written")
+		w.Flush()
+
+		return b.Put(itob(tmpGroup.Gid), buf)
+	})
+
+	if err != nil {
+		return err
+	}
+	return err
+}
+
+func groupRemove(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (err error) {
+
+	// get lenArgs
+	lenArgs, _ := r.ReadByte()
+	fmt.Printf("lenArgs = %v\n", lenArgs)
+
+	// get details for current accessor
+	uuid, _ := r.ReadString('\n')
+	uintUuid, err := strconv.ParseUint(strings.TrimSpace(uuid), 10, 64)
+	if err != nil {
+		return err
+	}
+
+	// get details for group to add to
+	gid, _ := r.ReadString('\n')
+	gid = strings.TrimSpace(gid)
+	uintGid, err := strconv.ParseUint(strings.TrimSpace(gid), 10, 64)
+	if err != nil {
+		return err
+	}
+
+	err = md.userDB.View(func(tx *bolt.Tx) error {
+
+		b := tx.Bucket([]byte("groups"))
+
+		v := b.Get(itob(uintGid))
+
+		fmt.Println("Trying to get: " + gid)
+
+		if v == nil {
+
+			w.WriteByte(2)
+			w.Flush()
+			return fmt.Errorf("Bad access")
+		}
+
+		var tmpGroup utils.Group
+		json.Unmarshal(v, &tmpGroup)
+
+		if tmpGroup.Owner != uintUuid {
+
+			fmt.Printf("Owner: %d, and uuid: %d", tmpGroup.Owner, uintUuid)
+
+			w.WriteByte(2)
+			w.Flush()
+			return fmt.Errorf("Bad access")
+		}
+
+		// authorised and group exists
+		w.WriteByte(1)
+		w.Flush()
+
+		return nil
+	})
+
+	if err != nil {
+
+		fmt.Println("Invalid access to group: " + strings.TrimSpace(gid))
+		return nil
+	}
+
+	var users []uint64
+
+	// read in all users
+	for i := 2; i < int(lenArgs); i++ {
+
+		fmt.Printf("  in loop at pos %d ready to read\n", i)
+
+		user, _ := r.ReadString('\n')
+		user = strings.TrimSpace(user)
+
+		fmt.Printf("  in loop read in user to add: %s\n", user)
+
+		exists, _ := userExists(user, md.userDB)
+		if exists {
+
+			uintUuid, _ := strconv.ParseUint(strings.TrimSpace(user), 10, 64)
+			users = append(users, uintUuid)
+		}
+	}
+
+	// add users to the group in the database
+	err = md.userDB.Update(func(tx *bolt.Tx) (err error) {
+
+		// get group bucket
+		b := tx.Bucket([]byte("groups"))
+
+		// we already know it exists from above
+		v := b.Get([]byte(strings.TrimSpace(gid)))
+
+		var tmpGroup utils.Group
+		json.Unmarshal(v, &tmpGroup)
+
+		newUsers := ""
+
+		for _, u := range users {
+			if !utils.Contains(u, tmpGroup.Members) {
+				tmpGroup.Members = append(tmpGroup.Members, u)
+				fmt.Println(u)
+				newUsers = newUsers + strconv.FormatUint(u, 10) + ", "
+			}
+		}
+
+		buf, err := json.Marshal(tmpGroup)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("writing users added")
+		w.WriteString(newUsers + "\n")
+		fmt.Println("written")
+		w.Flush()
+
+		return b.Put(itob(tmpGroup.Gid), buf)
+	})
+
+	if err != nil {
+		return err
+	}
+	return err
+}
+
+func userExists(uuid string, db *bolt.DB) (exists bool, err error) {
+
+	exists = false
+	err = db.View(func(tx *bolt.Tx) error {
+
+		b := tx.Bucket([]byte("users"))
+		v := b.Get([]byte(uuid))
+		if v != nil {
+			exists = true
+		}
+		return nil
+	})
+	return
+}

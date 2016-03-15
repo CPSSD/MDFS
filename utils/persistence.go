@@ -22,8 +22,8 @@ type Stnode struct {
 }
 
 type Group struct {
-	Gid     uint64 //gid
-	Gname   string
+	Gid     uint64   //gid
+	Gname   string   //name
 	Owner   uint64   //uuids
 	Members []uint64 //uuids
 }
@@ -34,6 +34,15 @@ type FileDesc struct {
 	Permissions uint16
 	Hash        string
 	Stnode      string
+}
+
+func Contains(u uint64, set []uint64) bool {
+	for _, v := range set {
+		if v == u {
+			return true
+		}
+	}
+	return false
 }
 
 func IsHidden(filepath string) (hidden bool) {

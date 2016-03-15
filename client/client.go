@@ -202,8 +202,20 @@ func main() {
 			// no calls to server, just print what we have stored here
 			fmt.Print(currentDir + "\n")
 
-		case "groupadd":
-			err := groupadd(r, w, args, &thisUser)
+		case "create-group":
+			err := createGroup(r, w, args, &thisUser)
+			if err != nil {
+				panic(err)
+			}
+
+		case "group-add":
+			err := groupAdd(r, w, args, &thisUser)
+			if err != nil {
+				panic(err)
+			}
+
+		case "group-remove":
+			err := groupAdd(r, w, args, &thisUser)
 			if err != nil {
 				panic(err)
 			}
@@ -745,14 +757,13 @@ func request(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string,
 	return
 }
 
-func groupadd(r *bufio.Reader, w *bufio.Writer, args []string, thisUser *utils.User) (err error) {
+func createGroup(r *bufio.Reader, w *bufio.Writer, args []string, thisUser *utils.User) (err error) {
 
 	if len(args) == 1 {
-		fmt.Println("No arguments for call to groupadd.")
+		fmt.Println("No arguments for call to create-group.")
 		return nil
 	}
 
-	fmt.Println("Called groupadd")
 	err = w.WriteByte(20)
 	w.Flush()
 	if err != nil {
@@ -781,6 +792,112 @@ func groupadd(r *bufio.Reader, w *bufio.Writer, args []string, thisUser *utils.U
 		fmt.Println("Created group \"" + args[i] + "\" with id: " + strings.TrimSpace(gid))
 	}
 	// send the group to create
+
+	return err
+}
+
+func groupAdd(r *bufio.Reader, w *bufio.Writer, args []string, thisUser *utils.User) (err error) {
+
+	// args should take the format:
+	//   group-add GID UUID1 UUID2 ... UUIDN
+	if len(args) < 3 {
+		fmt.Println("Not enough arguments for call to groupadd:")
+		fmt.Println("Format should be: group-add GID UUID1 UUID2 ... UUIDN")
+		return nil
+	}
+
+	err = w.WriteByte(21)
+	w.Flush()
+	if err != nil {
+		return err
+	}
+
+	// send the length of args
+	err = w.WriteByte(uint8(len(args)))
+	w.Flush()
+	if err != nil {
+		return err
+	}
+
+	// send current user (owner) for validation
+	idStr := strconv.FormatUint(thisUser.Uuid, 10)
+	w.WriteString(idStr + "\n")
+	w.WriteString(args[1] + "\n")
+	w.Flush()
+
+	// get success (1) or fail (2)
+	success, _ := r.ReadByte()
+	if success != 1 {
+		fmt.Println("You cannot add users to this group. Are you the owner?")
+		return err
+	}
+
+	for i := 2; i < len(args); i++ {
+
+		// send uuid to add
+		w.WriteString(args[i] + "\n")
+		fmt.Println("Wrote: " + args[i])
+		w.Flush()
+	}
+
+	// get uuids added
+	result, _ := r.ReadString('\n')
+	result = strings.TrimSuffix(strings.TrimSpace(result), ",")
+
+	fmt.Println("Added users: " + result + " to group " + args[1])
+
+	return err
+}
+
+func groupRemove(r *bufio.Reader, w *bufio.Writer, args []string, thisUser *utils.User) (err error) {
+
+	// args should take the format:
+	//   group-add GID UUID1 UUID2 ... UUIDN
+	if len(args) < 3 {
+		fmt.Println("Not enough arguments for call to groupadd:")
+		fmt.Println("Format should be: group-add GID UUID1 UUID2 ... UUIDN")
+		return nil
+	}
+
+	err = w.WriteByte(22)
+	w.Flush()
+	if err != nil {
+		return err
+	}
+
+	// send the length of args
+	err = w.WriteByte(uint8(len(args)))
+	w.Flush()
+	if err != nil {
+		return err
+	}
+
+	// send current user (owner) for validation
+	idStr := strconv.FormatUint(thisUser.Uuid, 10)
+	w.WriteString(idStr + "\n")
+	w.WriteString(args[1] + "\n")
+	w.Flush()
+
+	// get success (1) or fail (2)
+	success, _ := r.ReadByte()
+	if success != 1 {
+		fmt.Println("You cannot add users to this group. Are you the owner?")
+		return err
+	}
+
+	for i := 2; i < len(args); i++ {
+
+		// send uuid to add
+		w.WriteString(args[i] + "\n")
+		fmt.Println("Wrote: " + args[i])
+		w.Flush()
+	}
+
+	// get uuids added
+	result, _ := r.ReadString('\n')
+	result = strings.TrimSuffix(strings.TrimSpace(result), ",")
+
+	fmt.Println("Added users: " + result + " to group " + args[1])
 
 	return err
 }
