@@ -15,13 +15,13 @@ import (
 )
 
 func setup(r *bufio.Reader, w *bufio.Writer, thisUser *utils.User) (err error) {
-	_, exists := os.Stat(utils.GetUserHome() + "/.client/.user_data")
+	_, exists := os.Stat(utils.GetUserHome() + "/.mdfs/client/.user_data")
 	if exists != nil { // not exist
 
 		fmt.Println("Make sure the local user dir exist")
 
 		// Make sure the local user dir exists
-		err := os.MkdirAll(utils.GetUserHome()+"/.client/", 0777)
+		err := os.MkdirAll(utils.GetUserHome()+"/.mdfs/client", 0777)
 		if err != nil {
 			return err
 		}
@@ -44,11 +44,11 @@ func setup(r *bufio.Reader, w *bufio.Writer, thisUser *utils.User) (err error) {
 		thisUser.Uname = strings.TrimSpace(uname)
 
 		// local user setup
-		utils.GenUserKeys(utils.GetUserHome() + "/.client/.private_key")
+		utils.GenUserKeys(utils.GetUserHome() + "/.mdfs/client/.private_key")
 
 		fmt.Println("keys set up")
 
-		err = utils.FileToStruct(utils.GetUserHome()+"/.client/.private_key", &thisUser.Privkey)
+		err = utils.FileToStruct(utils.GetUserHome()+"/.mdfs/client/.private_key", &thisUser.Privkey)
 		if err != nil {
 			return err
 		}
@@ -72,7 +72,7 @@ func setup(r *bufio.Reader, w *bufio.Writer, thisUser *utils.User) (err error) {
 
 		fmt.Println("read uuid, store to file")
 
-		err = utils.StructToFile(*thisUser, utils.GetUserHome()+"/.client/.user_data")
+		err = utils.StructToFile(*thisUser, utils.GetUserHome()+"/.mdfs/client/.user_data")
 		if err != nil {
 			return err
 		}
@@ -83,7 +83,7 @@ func setup(r *bufio.Reader, w *bufio.Writer, thisUser *utils.User) (err error) {
 
 	} else {
 
-		err = utils.FileToStruct(utils.GetUserHome()+"/.client/.user_data", &thisUser)
+		err = utils.FileToStruct(utils.GetUserHome()+"/.mdfs/client/.user_data", &thisUser)
 	}
 
 	return err
@@ -680,7 +680,7 @@ func request(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string,
 		return err
 	}
 
-	output := utils.GetUserHome() + "/.client/" + path.Base(args[1])
+	output := utils.GetUserHome() + "/.mdfs/client/" + path.Base(args[1])
 
 	if protected {
 
