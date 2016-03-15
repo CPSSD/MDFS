@@ -29,6 +29,7 @@ type StorageNode struct {
 type MDService struct {
 	userDB   *bolt.DB
 	stnodeDB *bolt.DB
+	groupDB  *bolt.DB
 	Server   // anonymous field of type Server
 }
 
@@ -150,7 +151,7 @@ func (md *MDService) setup() (err error) {
 		return err
 	}
 
-	md.userDB.Update(func(tx *bolt.Tx) error {
+	err = md.userDB.Update(func(tx *bolt.Tx) error {
 		_, err := tx.CreateBucketIfNotExists([]byte("users"))
 		if err != nil {
 			return fmt.Errorf("create bucket: %s", err)
@@ -158,22 +159,30 @@ func (md *MDService) setup() (err error) {
 		return nil
 	})
 
-	fmt.Println("Set up user db")
-
-	md.stnodeDB, err = bolt.Open(md.getPath()+".stnodeDB.db", 0700, nil)
-	if err != nil {
-		panic(err)
-	}
-
-	md.stnodeDB.Update(func(tx *bolt.Tx) error {
-		_, err := tx.CreateBucketIfNotExists([]byte("stnodes"))
+	err = md.userDB.Update(func(tx *bolt.Tx) error {
+		_, err := tx.CreateBucketIfNotExists([]byte("groups"))
 		if err != nil {
 			return fmt.Errorf("create bucket: %s", err)
 		}
 		return nil
 	})
 
-	fmt.Println("Set up stnode db")
+	fmt.Println("Set up user db, containing user bucket and group bucket")
+
+	md.stnodeDB, err = bolt.Open(md.getPath()+".stnodeDB.db", 0700, nil)
+	if err != nil {
+		return err
+	}
+
+	err = md.stnodeDB.Update(func(tx *bolt.Tx) error {
+		_, err := tx.CreateBucketIfNotExists([]byte("stnodes"))
+		if err != nil {
+			return fmt.Errorf("create bucket: %s", err)
+		}
+		return nil
+	})
+	fmt.Println("Set up stnode db, containing stnode bucket")
+
 	return err
 }
 
@@ -304,6 +313,14 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 			panic(err)
 		}
 		fmt.Println("Fin stnode setup")
+
+	case 20:
+		fmt.Println("In createGroup")
+		err := createGroup(conn, r, w, &md)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println("Fin createGroup")
 	}
 }
 

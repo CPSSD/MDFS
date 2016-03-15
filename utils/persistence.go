@@ -21,6 +21,13 @@ type Stnode struct {
 	NAddress string
 }
 
+type Group struct {
+	Gid     uint64 //gid
+	Gname   string
+	Owner   uint64   //uuids
+	Members []uint64 //uuids
+}
+
 type FileDesc struct {
 	Protected   bool
 	Owner       uint64

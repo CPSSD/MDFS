@@ -202,6 +202,12 @@ func main() {
 			// no calls to server, just print what we have stored here
 			fmt.Print(currentDir + "\n")
 
+		case "groupadd":
+			err := groupadd(r, w, args, &thisUser)
+			if err != nil {
+				panic(err)
+			}
+
 		case "exit":
 			// leave the program. The server will notice that the client has
 			// disconnected and will close the TCP connection on its side
@@ -737,4 +743,44 @@ func request(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string,
 	fmt.Println("File exists")
 
 	return
+}
+
+func groupadd(r *bufio.Reader, w *bufio.Writer, args []string, thisUser *utils.User) (err error) {
+
+	if len(args) == 1 {
+		fmt.Println("No arguments for call to groupadd.")
+		return nil
+	}
+
+	fmt.Println("Called groupadd")
+	err = w.WriteByte(20)
+	w.Flush()
+	if err != nil {
+		return err
+	}
+
+	// send the length of args
+	err = w.WriteByte(uint8(len(args)))
+	w.Flush()
+	if err != nil {
+		return err
+	}
+
+	// send current user (owner)
+	idStr := strconv.FormatUint(thisUser.Uuid, 10)
+	w.WriteString(idStr + "\n")
+
+	for i := 1; i < len(args); i++ {
+
+		// send group to create
+		w.WriteString(args[i] + "\n")
+		w.Flush()
+
+		// get group id to display to user
+		gid, _ := r.ReadString('\n')
+		fmt.Println("Created group \"" + args[i] + "\" with id: " + strings.TrimSpace(gid))
+	}
+	// send the group to create
+
+	return err
 }
