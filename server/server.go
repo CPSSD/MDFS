@@ -547,7 +547,9 @@ func rmdir(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (err 
 		// a path is a dir or a file is found in "cd" below).
 		// NOTE: a nice to have would be a recursive remove similar to rm -rf,
 		// but this is not needed
-		if !utils.IsHidden(targetPath) {
+
+		src, err := os.Stat(md.getPath() + "files" + targetPath)
+		if !utils.IsHidden(targetPath) && err == nil && src.IsDir() {
 			os.Remove(md.getPath() + "files" + targetPath)
 		}
 	}
