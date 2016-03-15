@@ -220,6 +220,12 @@ func main() {
 				panic(err)
 			}
 
+		case "group-ls":
+			err := groupLs(r, w, args, &thisUser)
+			if err != nil {
+				panic(err)
+			}
+
 		case "exit":
 			// leave the program. The server will notice that the client has
 			// disconnected and will close the TCP connection on its side
@@ -798,8 +804,6 @@ func createGroup(r *bufio.Reader, w *bufio.Writer, args []string, thisUser *util
 
 func groupAdd(r *bufio.Reader, w *bufio.Writer, args []string, thisUser *utils.User) (err error) {
 
-	// args should take the format:
-	//   group-add GID UUID1 UUID2 ... UUIDN
 	if len(args) < 3 {
 		fmt.Println("Not enough arguments for call to groupadd:")
 		fmt.Println("Format should be: group-add GID UUID1 UUID2 ... UUIDN")
@@ -851,8 +855,6 @@ func groupAdd(r *bufio.Reader, w *bufio.Writer, args []string, thisUser *utils.U
 
 func groupRemove(r *bufio.Reader, w *bufio.Writer, args []string, thisUser *utils.User) (err error) {
 
-	// args should take the format:
-	//   group-add GID UUID1 UUID2 ... UUIDN
 	if len(args) < 3 {
 		fmt.Println("Not enough arguments for call to group-remove:")
 		fmt.Println("Format should be: group-remove GID UUID1 UUID2 ... UUIDN")
@@ -898,6 +900,40 @@ func groupRemove(r *bufio.Reader, w *bufio.Writer, args []string, thisUser *util
 	result = strings.TrimSuffix(strings.TrimSpace(result), ",")
 
 	fmt.Println("Removed users: " + result + " from group " + args[1])
+
+	return err
+}
+
+func groupLs(r *bufio.Reader, w *bufio.Writer, args []string, thisUser *utils.User) (err error) {
+
+	if len(args) != 2 {
+		fmt.Println("Wrong number of arguments for call to group-ls:")
+		fmt.Println("Format should be: group-ls GID")
+		return nil
+	}
+
+	err = w.WriteByte(23)
+	w.Flush()
+	if err != nil {
+		return err
+	}
+
+	// send the group id
+	w.WriteString(args[1] + "\n")
+	w.Flush()
+
+	// get success (1) or fail (2)
+	success, _ := r.ReadByte()
+	if success != 1 {
+		fmt.Println("The group does not exist")
+		return err
+	}
+
+	// get uuids of the group
+	result, _ := r.ReadString('\n')
+	result = strings.TrimSuffix(strings.TrimSpace(result), ",")
+
+	fmt.Println("Members of Group " + args[1] + ": " + result)
 
 	return err
 }

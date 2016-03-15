@@ -328,6 +328,71 @@ func groupRemove(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService)
 	return err
 }
 
+func groupLs(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (err error) {
+
+	// get details for group to list
+	gid, _ := r.ReadString('\n')
+	gid = strings.TrimSpace(gid)
+	uintGid, err := strconv.ParseUint(gid, 10, 64)
+	if err != nil {
+		return err
+	}
+
+	var members []uint64
+
+	// ensure valid group
+	err = md.userDB.View(func(tx *bolt.Tx) error {
+
+		b := tx.Bucket([]byte("groups"))
+
+		v := b.Get(itob(uintGid))
+
+		fmt.Println("Trying to get: " + gid)
+
+		if v == nil {
+
+			w.WriteByte(2)
+			w.Flush()
+			return fmt.Errorf("Bad access")
+		}
+
+		var tmpGroup utils.Group
+		json.Unmarshal(v, &tmpGroup)
+
+		members = tmpGroup.Members
+
+		// group exists
+		w.WriteByte(1)
+		w.Flush()
+
+		return nil
+	})
+
+	if err != nil {
+
+		fmt.Println("Invalid access to group: " + gid)
+		return nil
+	}
+
+	result := ""
+
+	for _, member := range members {
+
+		fmt.Println(member)
+		result = result + strconv.FormatUint(member, 10) + ", "
+	}
+
+	fmt.Println("writing members of group")
+	w.WriteString(result + "\n")
+	fmt.Println("written")
+	w.Flush()
+
+	if err != nil {
+		return err
+	}
+	return err
+}
+
 func userExists(uuid string, db *bolt.DB) (exists bool, err error) {
 
 	exists = false
