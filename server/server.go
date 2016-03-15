@@ -281,6 +281,14 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 		}
 		fmt.Println("Fin send")
 
+	case 7: // rm
+		fmt.Println("In rm")
+		err := rm(conn, r, w, &md)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println("Fin rm")
+
 	case 10: // setup new user
 		fmt.Println("In user setup")
 		err := newUser(conn, r, w, &md)
@@ -550,6 +558,46 @@ func rmdir(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (err 
 
 		src, err := os.Stat(md.getPath() + "files" + targetPath)
 		if !utils.IsHidden(targetPath) && err == nil && src.IsDir() {
+			os.Remove(md.getPath() + "files" + targetPath)
+		}
+	}
+	return nil
+}
+
+func rm(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (err error) {
+
+	// get currentDir
+	currentDir, _ := r.ReadString('\n')
+	currentDir = strings.TrimSpace(currentDir)
+
+	// get len args for rmdir
+	lenArgs, _ := r.ReadByte()
+	fmt.Printf("lenArgs = %v\n", lenArgs)
+
+	// only does something if more than "rmdir" is called, as above
+	for i := 1; i < int(lenArgs); i++ {
+
+		fmt.Printf("  in loop at pos %d ready to read\n", i)
+
+		targetPath, _ := r.ReadString('\n')
+		targetPath = strings.TrimSpace(targetPath)
+
+		if !path.IsAbs(targetPath) {
+			targetPath = path.Join(currentDir, targetPath)
+		}
+
+		fmt.Printf("  in loop read in targetPath: %s", targetPath)
+
+		// this will only remove a dir that is empty, else it does nothing
+		// BUG-NOTE: this command will also currently delete files (there is not
+		// a different command to rmdir an rm in golang), so a check to make sure
+		// the targetPath is a dir should take place (sample code for checking if
+		// a path is a dir or a file is found in "cd" below).
+		// NOTE: a nice to have would be a recursive remove similar to rm -rf,
+		// but this is not needed
+
+		src, err := os.Stat(md.getPath() + "files" + targetPath)
+		if !utils.IsHidden(targetPath) && err == nil && !src.IsDir() {
 			os.Remove(md.getPath() + "files" + targetPath)
 		}
 	}

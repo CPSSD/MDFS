@@ -192,6 +192,12 @@ func main() {
 				panic(err)
 			}
 
+		case "rm":
+			err := rm(r, w, currentDir, args)
+			if err != nil {
+				panic(err)
+			}
+
 		case "pwd":
 			// no calls to server, just print what we have stored here
 			fmt.Print(currentDir + "\n")
@@ -301,6 +307,36 @@ func rmdir(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string) (
 
 	// START SENDCODE BLOCK
 	err = w.WriteByte(3)
+	w.Flush()
+	if err != nil {
+		panic(err)
+	}
+	// END SENDCODE BLOCK
+
+	// Send current dir
+	w.WriteString(currentDir + "\n")
+	w.Flush()
+
+	// send len args
+	err = w.WriteByte(uint8(len(args)))
+	w.Flush()
+	if err != nil {
+		panic(err)
+	}
+
+	// send each arg (if it exists)
+	for i := 1; i < len(args); i++ {
+
+		w.WriteString(args[i] + "\n")
+		w.Flush()
+	}
+
+	return err
+}
+func rm(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string) (err error) {
+
+	// START SENDCODE BLOCK
+	err = w.WriteByte(7)
 	w.Flush()
 	if err != nil {
 		panic(err)
