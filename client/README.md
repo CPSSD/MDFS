@@ -1,4 +1,4 @@
-##mdservice_client.go
+##client.go
 This program is used to interact with a running instance of a metadata service. The program will panic if it tries to connect to a socket where there is no metadata service listening.
 
 ###Configuration
