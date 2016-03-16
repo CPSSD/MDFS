@@ -15,13 +15,20 @@ import (
 )
 
 func setup(r *bufio.Reader, w *bufio.Writer, thisUser *utils.User) (err error) {
-	_, exists := os.Stat(utils.GetUserHome() + "/.mdfs/client/.user_data")
+
+	reader := bufio.NewReader(os.Stdin)
+
+	fmt.Print("Please enter your username and hit enter: ")
+	uname, _ := reader.ReadString('\n')
+
+	thisUser.Uname = strings.TrimSpace(uname)
+	_, exists := os.Stat(utils.GetUserHome() + "/.mdfs/client/" + uname + "/.user_data")
 	if exists != nil { // not exist
 
 		fmt.Println("Make sure the local user dir exist")
 
 		// Make sure the local user dir exists
-		err := os.MkdirAll(utils.GetUserHome()+"/.mdfs/client", 0777)
+		err := os.MkdirAll(utils.GetUserHome()+"/.mdfs/client/"+uname+"/files", 0777)
 		if err != nil {
 			return err
 		}
@@ -37,18 +44,12 @@ func setup(r *bufio.Reader, w *bufio.Writer, thisUser *utils.User) (err error) {
 
 		fmt.Println("local user setup")
 
-		reader := bufio.NewReader(os.Stdin)
-
-		fmt.Print("Please enter your username and hit enter: ")
-		uname, _ := reader.ReadString('\n')
-		thisUser.Uname = strings.TrimSpace(uname)
-
 		// local user setup
-		utils.GenUserKeys(utils.GetUserHome() + "/.mdfs/client/.private_key")
+		utils.GenUserKeys(utils.GetUserHome() + "/.mdfs/client/" + uname + "/.private_key")
 
 		fmt.Println("keys set up")
 
-		err = utils.FileToStruct(utils.GetUserHome()+"/.mdfs/client/.private_key", &thisUser.Privkey)
+		err = utils.FileToStruct(utils.GetUserHome()+"/.mdfs/client/"+uname+"/.private_key", &thisUser.Privkey)
 		if err != nil {
 			return err
 		}
@@ -72,7 +73,7 @@ func setup(r *bufio.Reader, w *bufio.Writer, thisUser *utils.User) (err error) {
 
 		fmt.Println("read uuid, store to file")
 
-		err = utils.StructToFile(*thisUser, utils.GetUserHome()+"/.mdfs/client/.user_data")
+		err = utils.StructToFile(*thisUser, utils.GetUserHome()+"/.mdfs/client/"+uname+"/.user_data")
 		if err != nil {
 			return err
 		}
@@ -83,7 +84,7 @@ func setup(r *bufio.Reader, w *bufio.Writer, thisUser *utils.User) (err error) {
 
 	} else {
 
-		err = utils.FileToStruct(utils.GetUserHome()+"/.mdfs/client/.user_data", &thisUser)
+		err = utils.FileToStruct(utils.GetUserHome()+"/.mdfs/client/"+uname+"/.user_data", &thisUser)
 	}
 
 	return err
@@ -222,6 +223,12 @@ func main() {
 
 		case "group-ls":
 			err := groupLs(r, w, args, &thisUser)
+			if err != nil {
+				panic(err)
+			}
+
+		case "delete-group":
+			err := deleteGroup(r, w, args, &thisUser)
 			if err != nil {
 				panic(err)
 			}
@@ -740,7 +747,7 @@ func request(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string,
 		return err
 	}
 
-	output := utils.GetUserHome() + "/.mdfs/client/" + path.Base(args[1])
+	output := utils.GetUserHome() + "/.mdfs/client/" + thisUser.Uname + "/files/" + path.Base(args[1])
 
 	if protected {
 
@@ -749,7 +756,9 @@ func request(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string,
 
 		err = utils.DecryptFile(encrypFile, output, *thisUser)
 		if err != nil {
-			return err
+
+			fmt.Println(err)
+			return nil
 		}
 
 	} else {
@@ -934,6 +943,38 @@ func groupLs(r *bufio.Reader, w *bufio.Writer, args []string, thisUser *utils.Us
 	result = strings.TrimSuffix(strings.TrimSpace(result), ",")
 
 	fmt.Println("Members of Group " + args[1] + ": " + result)
+
+	return err
+}
+
+func deleteGroup(r *bufio.Reader, w *bufio.Writer, args []string, thisUser *utils.User) (err error) {
+
+	if len(args) < 2 {
+		fmt.Println("Not enough arguments for call to group-remove:")
+		fmt.Println("Format should be: delete-group GID")
+		return nil
+	}
+
+	err = w.WriteByte(24)
+	w.Flush()
+	if err != nil {
+		return err
+	}
+
+	// send current user (owner) for validation and group
+	idStr := strconv.FormatUint(thisUser.Uuid, 10)
+	w.WriteString(idStr + "\n")
+	w.WriteString(args[1] + "\n")
+	w.Flush()
+
+	// get success (1) or fail (2)
+	success, _ := r.ReadByte()
+	if success != 1 {
+		fmt.Println("You cannot remove this group. Does it exist/are you the owner?")
+		return err
+	}
+
+	fmt.Println("Removed: " + args[1])
 
 	return err
 }

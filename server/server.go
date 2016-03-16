@@ -345,6 +345,13 @@ func (md MDService) handleCode(code uint8, conn net.Conn, r *bufio.Reader, w *bu
 			panic(err)
 		}
 		fmt.Println("Fin groupLs")
+	case 24:
+		fmt.Println("In deleteGroup")
+		err := deleteGroup(conn, r, w, &md)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println("Fin deleteGroup")
 	}
 }
 
