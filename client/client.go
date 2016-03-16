@@ -233,6 +233,12 @@ func main() {
 				panic(err)
 			}
 
+		case "list-groups":
+			err := listGroups(r, w, args, &thisUser)
+			if err != nil {
+				panic(err)
+			}
+
 		case "exit":
 			// leave the program. The server will notice that the client has
 			// disconnected and will close the TCP connection on its side
@@ -240,7 +246,6 @@ func main() {
 			os.Exit(0)
 
 		default:
-
 			// you clearly cannot type correctly
 			fmt.Println("Unrecognised command")
 		}
@@ -977,4 +982,62 @@ func deleteGroup(r *bufio.Reader, w *bufio.Writer, args []string, thisUser *util
 	fmt.Println("Removed: " + args[1])
 
 	return err
+}
+
+func listGroups(r *bufio.Reader, w *bufio.Writer, args []string, thisUser *utils.User) (err error) {
+
+	w.WriteByte(25)
+	w.Flush()
+
+	if len(args) == 1 { // sendcode 25
+
+		w.WriteByte(3)
+		w.Flush()
+
+	} else {
+
+		switch args[1] {
+		case "-m": // sendcode 26
+			fmt.Println("You are a member of the following groups:")
+			w.WriteByte(1)
+			w.Flush()
+
+		case "-o": // sendcode 27
+			fmt.Println("You are the owner of the following groups:")
+			w.WriteByte(2)
+			w.Flush()
+
+		default:
+			w.WriteByte(4)
+			w.Flush()
+			fmt.Println("Not valid arguments to list-groups:")
+			fmt.Println("Format should be one of:")
+			fmt.Println("list-groups -m")
+			fmt.Println("list-groups -o")
+			fmt.Println("list-groups")
+			return nil
+		}
+	}
+
+	// send current user (owner) for membership / ownership
+	idStr := strconv.FormatUint(thisUser.Uuid, 10)
+	w.WriteString(idStr + "\n")
+	w.Flush()
+
+	for success, _ := r.ReadByte(); success != 2; success, _ = r.ReadByte() {
+
+		group, _ := r.ReadString('\n')
+		groupArr := strings.Split(strings.TrimSuffix(strings.TrimSpace(group), ","), ",")
+
+		fmt.Print("Name: " + groupArr[0] + "\tID: " + groupArr[1] + "\tMembers: ")
+
+		for i, v := range groupArr {
+			if i > 1 {
+				fmt.Print(v + ", ")
+			}
+		}
+		fmt.Println()
+	}
+
+	return
 }

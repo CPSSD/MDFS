@@ -487,3 +487,169 @@ func userExists(uuid string, db *bolt.DB) (exists bool, err error) {
 	})
 	return
 }
+
+func listGroups(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (err error) {
+
+	mod, _ := r.ReadByte()
+
+	fmt.Println(mod)
+
+	switch mod {
+	case 1: // sendcode 26
+		return listGroupsMemberOf(conn, r, w, md)
+	case 2: // sendcode 27
+		return listGroupsOwnerOf(conn, r, w, md)
+	case 3:
+		return listGroupsAll(conn, r, w, md)
+	case 4:
+		return nil
+	}
+	return nil
+}
+
+func listGroupsAll(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (err error) {
+
+	// get details for current accessor
+	uuid, _ := r.ReadString('\n')
+	uintUuid, err := strconv.ParseUint(strings.TrimSpace(uuid), 10, 64)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("User listing: %d\n", uintUuid)
+
+	err = md.userDB.View(func(tx *bolt.Tx) error {
+
+		b := tx.Bucket([]byte("groups"))
+
+		c := b.Cursor()
+
+		for k, v := c.First(); k != nil; k, v = c.Next() {
+
+			var tmpGroup utils.Group
+			json.Unmarshal(v, &tmpGroup)
+
+			w.WriteByte(1)
+			w.Flush()
+
+			groups := ""
+
+			groups = groups + tmpGroup.Gname + "," + strconv.FormatUint(tmpGroup.Gid, 10) + ","
+			for _, u := range tmpGroup.Members {
+				groups = groups + strconv.FormatUint(u, 10) + ","
+			}
+
+			w.WriteString(groups + "\n")
+			w.Flush()
+
+			fmt.Println("Written group " + tmpGroup.Gname)
+		}
+
+		w.WriteByte(2)
+		w.Flush() // indicate to client that we are done listing
+
+		return nil
+	})
+
+	return
+}
+
+func listGroupsOwnerOf(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (err error) {
+
+	// get details for current accessor
+	uuid, _ := r.ReadString('\n')
+	uintUuid, err := strconv.ParseUint(strings.TrimSpace(uuid), 10, 64)
+	if err != nil {
+		return err
+	}
+
+	err = md.userDB.View(func(tx *bolt.Tx) error {
+
+		b := tx.Bucket([]byte("groups"))
+
+		c := b.Cursor()
+
+		for k, v := c.First(); k != nil; k, v = c.Next() {
+
+			var tmpGroup utils.Group
+			json.Unmarshal(v, &tmpGroup)
+
+			if tmpGroup.Owner != uintUuid {
+
+				continue
+			}
+
+			w.WriteByte(1)
+			w.Flush()
+
+			groups := ""
+
+			groups = groups + tmpGroup.Gname + "," + strconv.FormatUint(tmpGroup.Gid, 10) + ","
+			for _, u := range tmpGroup.Members {
+				groups = groups + strconv.FormatUint(u, 10) + ","
+			}
+
+			w.WriteString(groups + "\n")
+			w.Flush()
+
+			fmt.Println("Written group " + tmpGroup.Gname)
+		}
+
+		w.WriteByte(2)
+		w.Flush() // indicate to client that we are done listing
+
+		return nil
+	})
+
+	return
+}
+
+func listGroupsMemberOf(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (err error) {
+
+	// get details for current accessor
+	uuid, _ := r.ReadString('\n')
+	uintUuid, err := strconv.ParseUint(strings.TrimSpace(uuid), 10, 64)
+	if err != nil {
+		return err
+	}
+
+	err = md.userDB.View(func(tx *bolt.Tx) error {
+
+		b := tx.Bucket([]byte("groups"))
+
+		c := b.Cursor()
+
+		for k, v := c.First(); k != nil; k, v = c.Next() {
+
+			var tmpGroup utils.Group
+			json.Unmarshal(v, &tmpGroup)
+
+			if !utils.Contains(uintUuid, tmpGroup.Members) {
+
+				continue
+			}
+
+			w.WriteByte(1)
+			w.Flush()
+
+			groups := ""
+
+			groups = groups + tmpGroup.Gname + "," + strconv.FormatUint(tmpGroup.Gid, 10) + ","
+			for _, u := range tmpGroup.Members {
+				groups = groups + strconv.FormatUint(u, 10) + ","
+			}
+
+			w.WriteString(groups + "\n")
+			w.Flush()
+
+			fmt.Println("Written group " + tmpGroup.Gname)
+		}
+
+		w.WriteByte(2)
+		w.Flush() // indicate to client that we are done listing
+
+		return nil
+	})
+
+	return
+}
