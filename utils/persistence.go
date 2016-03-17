@@ -36,6 +36,12 @@ type FileDesc struct {
 	Stnode      string
 }
 
+type Perm struct {
+	Owner       uint64
+	Groups      []uint64
+	Permissions []bool
+}
+
 func Contains(u uint64, set []uint64) bool {
 	for _, v := range set {
 		if v == u {

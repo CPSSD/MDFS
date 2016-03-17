@@ -14,24 +14,18 @@ import (
 	"net"
 	//"os"
 	//"path"
+	"path"
 	"strconv"
 	"strings"
 )
 
-func createGroup(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (err error) {
+func createGroup(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (err error) {
 
 	fmt.Println("Called create group")
 
 	// get lenArgs
 	lenArgs, _ := r.ReadByte()
 	fmt.Printf("lenArgs = %v\n", lenArgs)
-
-	// get details for owner of new group
-	uuid, _ := r.ReadString('\n')
-	uintUuid, err := strconv.ParseUint(strings.TrimSpace(uuid), 10, 64)
-	if err != nil {
-		return err
-	}
 
 	for i := 1; i < int(lenArgs); i++ {
 
@@ -54,10 +48,10 @@ func createGroup(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService)
 
 			newGroup.Gid = uint64(id)
 			newGroup.Gname = groupName
-			newGroup.Members = append(newGroup.Members, uintUuid)
-			newGroup.Owner = uintUuid
+			newGroup.Members = append(newGroup.Members, uuid)
+			newGroup.Owner = uuid
 
-			fmt.Println("New group \"" + newGroup.Gname + "\" with owner id: " + strings.TrimSpace(uuid))
+			fmt.Println("New group \"" + newGroup.Gname + "\" with owner id: " + strconv.FormatUint(uuid, 10))
 
 			buf, err := json.Marshal(newGroup)
 			if err != nil {
@@ -79,18 +73,11 @@ func createGroup(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService)
 	return err
 }
 
-func groupAdd(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (err error) {
+func groupAdd(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (err error) {
 
 	// get lenArgs
 	lenArgs, _ := r.ReadByte()
 	fmt.Printf("lenArgs = %v\n", lenArgs)
-
-	// get details for current accessor
-	uuid, _ := r.ReadString('\n')
-	uintUuid, err := strconv.ParseUint(strings.TrimSpace(uuid), 10, 64)
-	if err != nil {
-		return err
-	}
 
 	// get details for group to add to
 	gid, _ := r.ReadString('\n')
@@ -121,9 +108,9 @@ func groupAdd(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (e
 		var tmpGroup utils.Group
 		json.Unmarshal(v, &tmpGroup)
 
-		if tmpGroup.Owner != uintUuid {
+		if tmpGroup.Owner != uuid {
 
-			fmt.Printf("Owner: %d, and uuid: %d", tmpGroup.Owner, uintUuid)
+			fmt.Printf("Owner: %d, and uuid: %d", tmpGroup.Owner, uuid)
 
 			w.WriteByte(2)
 			w.Flush()
@@ -210,18 +197,11 @@ func groupAdd(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (e
 	return err
 }
 
-func groupRemove(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (err error) {
+func groupRemove(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (err error) {
 
 	// get lenArgs
 	lenArgs, _ := r.ReadByte()
 	fmt.Printf("lenArgs = %v\n", lenArgs)
-
-	// get details for current accessor
-	uuid, _ := r.ReadString('\n')
-	uintUuid, err := strconv.ParseUint(strings.TrimSpace(uuid), 10, 64)
-	if err != nil {
-		return err
-	}
 
 	// get details for group to remove from
 	gid, _ := r.ReadString('\n')
@@ -253,9 +233,9 @@ func groupRemove(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService)
 		var tmpGroup utils.Group
 		json.Unmarshal(v, &tmpGroup)
 
-		if tmpGroup.Owner != uintUuid {
+		if tmpGroup.Owner != uuid {
 
-			fmt.Printf("Owner: %d, and uuid: %d", tmpGroup.Owner, uintUuid)
+			fmt.Printf("Owner: %d, and uuid: %d", tmpGroup.Owner, uuid)
 
 			w.WriteByte(2)
 			w.Flush()
@@ -340,7 +320,7 @@ func groupRemove(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService)
 	return err
 }
 
-func groupLs(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (err error) {
+func groupLs(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (err error) {
 
 	// get details for group to list
 	gid, _ := r.ReadString('\n')
@@ -408,14 +388,7 @@ func groupLs(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (er
 	return err
 }
 
-func deleteGroup(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (err error) {
-
-	// get details for current accessor
-	uuid, _ := r.ReadString('\n')
-	uintUuid, err := strconv.ParseUint(strings.TrimSpace(uuid), 10, 64)
-	if err != nil {
-		return err
-	}
+func deleteGroup(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (err error) {
 
 	// get details for group to remove from
 	gid, _ := r.ReadString('\n')
@@ -447,9 +420,9 @@ func deleteGroup(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService)
 		var tmpGroup utils.Group
 		json.Unmarshal(v, &tmpGroup)
 
-		if tmpGroup.Owner != uintUuid {
+		if tmpGroup.Owner != uuid {
 
-			fmt.Printf("Owner: %d, and uuid: %d\n", tmpGroup.Owner, uintUuid)
+			fmt.Printf("Owner: %d, and uuid: %d\n", tmpGroup.Owner, uuid)
 
 			w.WriteByte(2)
 			w.Flush()
@@ -488,7 +461,7 @@ func userExists(uuid string, db *bolt.DB) (exists bool, err error) {
 	return
 }
 
-func listGroups(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (err error) {
+func listGroups(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (err error) {
 
 	mod, _ := r.ReadByte()
 
@@ -496,27 +469,20 @@ func listGroups(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) 
 
 	switch mod {
 	case 1: // sendcode 26
-		return listGroupsMemberOf(conn, r, w, md)
+		return listGroupsMemberOf(uuid, conn, r, w, md)
 	case 2: // sendcode 27
-		return listGroupsOwnerOf(conn, r, w, md)
+		return listGroupsOwnerOf(uuid, conn, r, w, md)
 	case 3:
-		return listGroupsAll(conn, r, w, md)
+		return listGroupsAll(uuid, conn, r, w, md)
 	case 4:
 		return nil
 	}
 	return nil
 }
 
-func listGroupsAll(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (err error) {
+func listGroupsAll(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (err error) {
 
-	// get details for current accessor
-	uuid, _ := r.ReadString('\n')
-	uintUuid, err := strconv.ParseUint(strings.TrimSpace(uuid), 10, 64)
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("User listing: %d\n", uintUuid)
+	fmt.Printf("User listing: %d\n", uuid)
 
 	err = md.userDB.View(func(tx *bolt.Tx) error {
 
@@ -554,14 +520,7 @@ func listGroupsAll(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDServic
 	return
 }
 
-func listGroupsOwnerOf(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (err error) {
-
-	// get details for current accessor
-	uuid, _ := r.ReadString('\n')
-	uintUuid, err := strconv.ParseUint(strings.TrimSpace(uuid), 10, 64)
-	if err != nil {
-		return err
-	}
+func listGroupsOwnerOf(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (err error) {
 
 	err = md.userDB.View(func(tx *bolt.Tx) error {
 
@@ -574,7 +533,7 @@ func listGroupsOwnerOf(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDSe
 			var tmpGroup utils.Group
 			json.Unmarshal(v, &tmpGroup)
 
-			if tmpGroup.Owner != uintUuid {
+			if tmpGroup.Owner != uuid {
 
 				continue
 			}
@@ -604,14 +563,7 @@ func listGroupsOwnerOf(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDSe
 	return
 }
 
-func listGroupsMemberOf(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (err error) {
-
-	// get details for current accessor
-	uuid, _ := r.ReadString('\n')
-	uintUuid, err := strconv.ParseUint(strings.TrimSpace(uuid), 10, 64)
-	if err != nil {
-		return err
-	}
+func listGroupsMemberOf(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (err error) {
 
 	err = md.userDB.View(func(tx *bolt.Tx) error {
 
@@ -624,7 +576,7 @@ func listGroupsMemberOf(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDS
 			var tmpGroup utils.Group
 			json.Unmarshal(v, &tmpGroup)
 
-			if !utils.Contains(uintUuid, tmpGroup.Members) {
+			if !utils.Contains(uuid, tmpGroup.Members) {
 
 				continue
 			}
@@ -652,4 +604,74 @@ func listGroupsMemberOf(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDS
 	})
 
 	return
+}
+
+func checkBase(uuid uint64, targetPath string, md *MDService) (auth bool) {
+
+	basePath := strings.TrimSuffix(targetPath, "/"+path.Base(targetPath))
+	return checkEntry(uuid, basePath, md)
+}
+
+func checkEntry(uuid uint64, targetPath, mod string, md *MDService) (auth bool) {
+
+	// check all the d in dirs for Xecute
+	dirs := strings.Split(targetPath, "/")
+	owner, groups, permissions, err := getPerm(targetPath + "/.perm")
+	if err != nil {
+		fmt.Println("No permissions file")
+		return false
+	}
+
+	for i, d := range dirs {
+		if i != 0 && i != len(dirs) {
+			fmt.Printf("%d, %s\n", i, d)
+
+			if owner == uuid {
+
+				return true
+
+			} else if groups != nil {
+
+				hasGroup := false
+
+				for _, g := range groups {
+					err = md.userDB.View(func(tx *bolt.Tx) error {
+
+						b := tx.Bucket([]byte("groups"))
+
+						v := b.Get(g)
+
+						if v == nil {
+							return nil
+						}
+
+						var tmpGroup utils.Group
+						json.Unmarshal(v, &tmpGroup)
+
+						if utils.Contains(uuid, tmpGroup.Members) {
+							hasGroup = true
+						}
+						return nil
+					})
+					if hasGroup {
+						break
+					}
+				}
+			} else {
+
+				switch mod {
+				case "r":
+					return (hasGroup && permissions[0]) || permissions[3]
+
+				case "w":
+					return (hasGroup && permissions[1]) || permissions[4]
+
+				case "x":
+					return (hasGroup && permissions[2]) || permissions[5]
+				}
+			}
+		}
+	}
+
+	return true
 }

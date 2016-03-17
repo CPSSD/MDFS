@@ -85,6 +85,7 @@ func setup(r *bufio.Reader, w *bufio.Writer, thisUser *utils.User) (err error) {
 	} else {
 
 		err = utils.FileToStruct(utils.GetUserHome()+"/.mdfs/client/"+uname+"/.user_data", &thisUser)
+
 	}
 
 	return err
@@ -128,6 +129,10 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	idStr := strconv.FormatUint(thisUser.Uuid, 10)
+	w.WriteString(idStr + "\n")
+	w.Flush()
 
 	// assume we will always start in the root directory (for safety)
 	currentDir := "/"
@@ -432,6 +437,10 @@ func cd(r *bufio.Reader, w *bufio.Writer, currentDir *string, args []string) (er
 	if isDir == 1 {
 
 		fmt.Println("Not a directory")
+
+	} else if isDir == 2 {
+
+		fmt.Println("Permission denied")
 
 	} else { // success!
 
@@ -989,6 +998,8 @@ func listGroups(r *bufio.Reader, w *bufio.Writer, args []string, thisUser *utils
 	w.WriteByte(25)
 	w.Flush()
 
+	verbose := false
+
 	if len(args) == 1 { // sendcode 25
 
 		w.WriteByte(3)
@@ -1007,13 +1018,33 @@ func listGroups(r *bufio.Reader, w *bufio.Writer, args []string, thisUser *utils
 			w.WriteByte(2)
 			w.Flush()
 
+		case "-mV": // sendcode 26
+			fmt.Println("You are a member of the following groups:")
+			w.WriteByte(1)
+			w.Flush()
+			verbose = true
+
+		case "-oV": // sendcode 27
+			fmt.Println("You are the owner of the following groups:")
+			w.WriteByte(2)
+			w.Flush()
+			verbose = true
+
+		case "-V": // sendcode 27
+			fmt.Println("You are the owner of the following groups:")
+			w.WriteByte(3)
+			w.Flush()
+			verbose = true
+
 		default:
 			w.WriteByte(4)
 			w.Flush()
 			fmt.Println("Not valid arguments to list-groups:")
 			fmt.Println("Format should be one of:")
 			fmt.Println("list-groups -m")
+			fmt.Println("list-groups -mV")
 			fmt.Println("list-groups -o")
+			fmt.Println("list-groups -oV")
 			fmt.Println("list-groups")
 			return nil
 		}
@@ -1029,11 +1060,14 @@ func listGroups(r *bufio.Reader, w *bufio.Writer, args []string, thisUser *utils
 		group, _ := r.ReadString('\n')
 		groupArr := strings.Split(strings.TrimSuffix(strings.TrimSpace(group), ","), ",")
 
-		fmt.Print("Name: " + groupArr[0] + "\tID: " + groupArr[1] + "\tMembers: ")
+		fmt.Print("Name: " + groupArr[0] + "\tID: " + groupArr[1])
 
-		for i, v := range groupArr {
-			if i > 1 {
-				fmt.Print(v + ", ")
+		if verbose {
+			fmt.Print("\tMembers: ")
+			for i, v := range groupArr {
+				if i > 1 {
+					fmt.Print(v + ", ")
+				}
 			}
 		}
 		fmt.Println()
