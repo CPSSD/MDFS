@@ -866,5 +866,142 @@ func permit(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MD
 
 func deny(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (err error) {
 
+	currentDir, _ := r.ReadString('\n')
+	currentDir = strings.TrimSpace(currentDir)
+
+	flag, _ := r.ReadString('\n')
+	flag = strings.TrimSpace(flag)
+	if flag == "INV" {
+		fmt.Println("Invalid flag from client")
+		return nil
+	}
+	lenArgs, _ := r.ReadByte()
+	fmt.Printf("lenArgs = %v\n", lenArgs)
+
+	targetPath, _ := r.ReadString('\n')
+	targetPath = strings.TrimSpace(targetPath)
+
+	if !path.IsAbs(targetPath) {
+		targetPath = path.Join(currentDir, targetPath)
+	}
+
+	fmt.Println("Target = " + md.getPath() + "files" + targetPath)
+
+	src, err := os.Stat(md.getPath() + "files" + targetPath)
+	if !utils.IsHidden(targetPath) && err == nil {
+		// exists, not hidden path
+	}
+
+	var groups []uint64
+
+	if src.IsDir() {
+		addPerms, _ := r.ReadString('\n')
+		addPerms = strings.TrimSpace(addPerms)
+		fmt.Println("HERE IN PERMIT")
+
+		for i := 4; i < int(lenArgs); i++ {
+			group, _ := r.ReadString('\n')
+			gid, err := strconv.ParseUint(strings.TrimSpace(group), 10, 64)
+			if err != nil {
+				continue
+			}
+			groups = append(groups, gid)
+		}
+		fmt.Println("HERE IN PERMIT")
+
+		if checkEntry(uuid, targetPath, "owner", md) {
+
+			owner, existingGroups, permissions, err := getPerm(md.getPath() + "files" + targetPath)
+			if err != nil {
+				fmt.Println("Error finding .perm for dir: " + targetPath)
+				return nil
+			}
+
+			switch flag {
+			case "-g":
+				for _, g := range groups {
+					for i, gr := range existingGroups {
+						if g == gr {
+							existingGroups = append(existingGroups[:i], existingGroups[i+1:]...)
+							fmt.Printf("Denying group: %d\n", g)
+							break
+						}
+					}
+				}
+				if strings.Contains(addPerms, "r") {
+					permissions[0] = false
+
+				}
+				if strings.Contains(addPerms, "w") {
+					permissions[1] = false
+
+				}
+				if strings.Contains(addPerms, "x") {
+					permissions[2] = false
+
+				}
+
+			case "-w":
+				if strings.Contains(addPerms, "r") {
+					permissions[3] = false
+
+				}
+				if strings.Contains(addPerms, "w") {
+					permissions[4] = false
+
+				}
+				if strings.Contains(addPerms, "x") {
+					permissions[5] = false
+
+				}
+			}
+
+			err = createPerm(md.getPath()+"files"+targetPath, owner, existingGroups, permissions)
+			if err != nil {
+				fmt.Println("Error re-writing .perm for dir: " + targetPath)
+			}
+		}
+
+	} else {
+
+		for i := 3; i < int(lenArgs); i++ {
+			group, _ := r.ReadString('\n')
+			gid, err := strconv.ParseUint(strings.TrimSpace(group), 10, 64)
+			if err != nil {
+				continue
+			}
+			groups = append(groups, gid)
+		}
+
+		if checkFile(uuid, targetPath, "x", md) {
+			hash, stnode, protected, owner, existingGroups, permissions, err := getFile(md.getPath() + "files" + targetPath)
+			if err != nil {
+				fmt.Println("Error finding file_perms for file: " + targetPath)
+				return nil
+			}
+
+			switch flag {
+			case "-g":
+				for _, g := range groups {
+					for i, gr := range existingGroups {
+						if g == gr {
+							existingGroups = append(existingGroups[:i], existingGroups[i+1:]...)
+							fmt.Printf("Denying group: %d\n", g)
+							break
+						}
+					}
+				}
+				permissions[0] = false
+
+			case "-w":
+				permissions[1] = false
+			}
+
+			err = createFile(md.getPath()+"files"+targetPath, hash, stnode, protected, owner, existingGroups, permissions)
+			if err != nil {
+				fmt.Println("Error re-writing .perm for dir: " + targetPath)
+			}
+		}
+	}
 	return nil
 }

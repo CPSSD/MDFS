@@ -248,7 +248,7 @@ func (md MDService) handleCode(uuid uint64, code uint8, conn net.Conn, r *bufio.
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println("Exited ls")
+		fmt.Println("Fin ls")
 
 	case 2:
 		fmt.Println("In mkdir")
@@ -312,6 +312,7 @@ func (md MDService) handleCode(uuid uint64, code uint8, conn net.Conn, r *bufio.
 		if err != nil {
 			panic(err)
 		}
+		fmt.Println("Fin deny")
 
 	case 10: // setup new user
 		fmt.Println("In user setup")
