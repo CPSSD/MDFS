@@ -291,34 +291,57 @@ func ls(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string) (err
 		panic(err)
 	}
 
+	verboseMod := 0
+	if len(args) > 1 && args[1] == "-V" {
+		w.WriteByte(1) // verbose
+		w.Flush()
+		if len(args) == 2 {
+
+			inFiles, _ := r.ReadByte()
+			numFiles := int(inFiles)
+
+			for i := 0; i < numFiles; i++ {
+				file, _ := r.ReadString('\n')
+				fmt.Print(file)
+			}
+			return nil
+		}
+		verboseMod = 1
+	} else {
+		w.WriteByte(2) // standard
+		w.Flush()
+		if len(args) == 1 {
+
+			inFiles, _ := r.ReadByte()
+			numFiles := int(inFiles)
+
+			for i := 0; i < numFiles; i++ {
+				file, _ := r.ReadString('\n')
+				fmt.Print(file)
+			}
+			return nil
+		}
+	}
+
 	// write each arg (if there are any) seperately so that the server
 	// can deal with them as per it's loop
-	for i := 1; i < len(args); i++ {
+	for i := 1 + verboseMod; i < len(args); i++ {
 
 		// simple sending of args
 		w.WriteString(args[i] + "\n")
 		w.Flush()
-	}
 
-	// read to whitespace? Check corresponding write on the server side
-	msg, _ := r.ReadString(' ')
+		inFiles, _ := r.ReadByte()
+		numFiles := int(inFiles)
 
-	// split results by commas
-	files := strings.Split(msg, ",")
+		for i := 0; i < numFiles; i++ {
+			file, _ := r.ReadString('\n')
+			fmt.Print(file)
 
-	// remove the last newline
-	msg = strings.TrimSuffix(msg, "\n")
+		}
 
-	// iterate over each result of the comma separated msg
-	for n, file := range files {
-
-		// don't print the last one? this is hacky code, needs cleaning on
-		// both client and server side, make sure to test changes so as not
-		// to break pieces
-		if n != len(files)-1 {
-
-			// newline for each piece of the result
-			fmt.Println(file)
+		if i != len(args)-1 && numFiles != 0 {
+			fmt.Println()
 		}
 	}
 

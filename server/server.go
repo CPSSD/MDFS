@@ -567,12 +567,19 @@ func ls(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDServ
 	currentDir = strings.TrimSpace(currentDir)
 
 	// get the length of arguments to the ls command
-	lenArgs, _ := r.ReadByte()
-	fmt.Printf("lenArgs = %v\n", lenArgs)
+	inArgs, _ := r.ReadByte()
+	fmt.Printf("lenArgs = %v\n", inArgs)
+
+	lenArgs := int(inArgs)
+	verbose, _ := r.ReadByte()
+	verboseMod := 0
+	if verbose == 1 {
+
+		verboseMod = 1
+	}
 
 	// the message which will be returned to the user, each entry will be
 	// comma separated for the client to interpret
-	msg := ""
 
 	// if only the ls command was called
 	if lenArgs == 1 && checkEntry(uuid, currentDir, "r", md) {
@@ -584,17 +591,29 @@ func ls(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDServ
 			w.Flush()
 		}
 
+		if currentDir == "/" || currentDir == "" {
+			fmt.Printf("Num writes = %d\n", len(files))
+			w.WriteByte(uint8(len(files)))
+			w.Flush()
+		} else {
+			fmt.Printf("Num writes = %d\n", len(files)-1)
+			w.WriteByte(uint8(len(files) - 1))
+			w.Flush()
+		}
+
 		// iterate over the files, and comma separate them while appending to msg
-		for _, file := range files {
+		for i, file := range files {
 			if !utils.IsHidden(file.Name()) {
-				msg = msg + file.Name() + ","
+				fmt.Printf("Writing %d of %d = %s\n", i, len(files), file.Name())
+				w.WriteString(file.Name() + "\n")
+				w.Flush()
 			}
 		}
 
 	}
 
 	// loop for dealing with one or more args
-	for i := 1; i < int(lenArgs); i++ {
+	for i := 1 + verboseMod; i < lenArgs; i++ {
 
 		// reading in this arg
 		targetPath, _ := r.ReadString('\n')
@@ -606,31 +625,44 @@ func ls(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDServ
 
 		fmt.Printf("  in loop read in targetPath: %s\n", (targetPath))
 		files, err := ioutil.ReadDir(md.getPath() + "files" + targetPath)
+
 		if err != nil {
 
 			// if it is not a directory, skip it and try the next arg
 			// or if not permitted
+			w.WriteByte(0)
+			w.Flush()
 			continue
 
 		} else if checkEntry(uuid, targetPath, "r", md) {
 
-			msg = msg + targetPath + ":," // note comma to denote newline
-			for _, file := range files {
+			if targetPath == "/" || targetPath == "" {
+				fmt.Printf("Num writes = %d\n", len(files)+1)
+				w.WriteByte(uint8(len(files) + 1))
+				w.Flush()
+			} else {
+
+				fmt.Printf("Num writes = %d\n", len(files))
+				w.WriteByte(uint8(len(files)))
+				w.Flush()
+			}
+
+			fmt.Println("Writing header: " + targetPath + ":")
+			w.WriteString(targetPath + ":" + "\n")
+			w.Flush()
+			for i, file := range files {
 				if !utils.IsHidden(file.Name()) {
-					msg = msg + file.Name() + ","
+
+					fmt.Printf("Writing %d of %d = %s\n", i, len(files), file.Name())
+					w.WriteString(file.Name() + "\n")
+					w.Flush()
 				}
 			}
-			msg = msg + ","
+		} else {
+			w.WriteByte(0)
+			w.Flush()
 		}
 	}
-
-	// remove the last newline for graphical reasons
-	msg = strings.TrimSuffix(msg, ",")
-
-	// add the newline back in for some bizarre reaason? not sure why,
-	// don't remove without testing effects on all types of ls command
-	w.WriteString(msg + ", ")
-	w.Flush()
 
 	// print for terminal's sake
 	return nil
