@@ -278,8 +278,14 @@ func ls(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string) (err
 	if err != nil {
 		panic(err)
 	}
-	// END SENDCODE BLOCK
 
+	verbose := 0
+	verboseMod := 0
+	// END SENDCODE BLOCK
+	if len(args) > 1 && args[1] == "-V" {
+		verbose = 1
+		verboseMod = 1
+	}
 	// Send current dir
 	w.WriteString(currentDir + "\n")
 	w.Flush()
@@ -291,36 +297,43 @@ func ls(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string) (err
 		panic(err)
 	}
 
-	verboseMod := 0
-	if len(args) > 1 && args[1] == "-V" {
+	if len(args) == 2 && verbose == 1 {
+
 		w.WriteByte(1) // verbose
 		w.Flush()
-		if len(args) == 2 {
 
-			inFiles, _ := r.ReadByte()
-			numFiles := int(inFiles)
+		inFiles, _ := r.ReadByte()
+		numFiles := int(inFiles)
 
-			for i := 0; i < numFiles; i++ {
-				file, _ := r.ReadString('\n')
-				fmt.Print(file)
-			}
-			return nil
+		for i := 0; i < numFiles; i++ {
+			file, _ := r.ReadString('\n')
+			fmt.Print(file)
 		}
-		verboseMod = 1
-	} else {
-		w.WriteByte(2) // standard
+		return nil
+
+	} else if verbose == 1 {
+
+		w.WriteByte(1) // verbose
 		w.Flush()
-		if len(args) == 1 {
 
-			inFiles, _ := r.ReadByte()
-			numFiles := int(inFiles)
+	} else if len(args) == 1 {
 
-			for i := 0; i < numFiles; i++ {
-				file, _ := r.ReadString('\n')
-				fmt.Print(file)
-			}
-			return nil
+		w.WriteByte(2)
+		w.Flush()
+		inFiles, _ := r.ReadByte()
+		numFiles := int(inFiles)
+
+		for i := 0; i < numFiles; i++ {
+			file, _ := r.ReadString('\n')
+			fmt.Print(file)
 		}
+		return nil
+
+	} else {
+
+		w.WriteByte(2)
+		w.Flush()
+
 	}
 
 	// write each arg (if there are any) seperately so that the server

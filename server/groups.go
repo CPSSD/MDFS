@@ -609,11 +609,14 @@ func listGroupsMemberOf(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Wr
 
 func checkFile(uuid uint64, targetPath, mod string, md *MDService) (auth bool) {
 
-	_, _, _, owner, groups, permissions, err := getFile(md.getPath() + "files" + targetPath)
+	fmt.Println("Getting filestats for: " + path.Join(md.getPath(), "files", targetPath))
+	_, _, _, owner, groups, permissions, err := getFile(path.Join(md.getPath(), "files", targetPath))
 	if err != nil {
 		fmt.Println("NO FILE AT: " + md.getPath() + "files" + targetPath)
 		return false
 	}
+
+	fmt.Printf("filestats: %d, %v, %v\n", owner, groups, permissions)
 
 	hasGroup := false
 	if groups != nil {
@@ -646,7 +649,11 @@ func checkFile(uuid uint64, targetPath, mod string, md *MDService) (auth bool) {
 
 	auth = (owner == uuid) || (hasGroup && permissions[0]) || permissions[1]
 
-	return checkBase(uuid, targetPath, mod, md) && auth
+	base := checkBase(uuid, targetPath, mod, md)
+
+	fmt.Printf("%b == %b, %b\n", auth, base, permissions[1])
+
+	return base && auth
 }
 
 func checkBase(uuid uint64, targetPath, mod string, md *MDService) (auth bool) {
@@ -715,6 +722,7 @@ func checkEntry(uuid uint64, targetPath, mod string, md *MDService) (auth bool) 
 				return (hasGroup && permissions[0]) || permissions[3]
 
 			case "w":
+				fmt.Printf("Checking w, perm = %b", permissions[4])
 				return (hasGroup && permissions[1]) || permissions[4]
 
 			case "x":
