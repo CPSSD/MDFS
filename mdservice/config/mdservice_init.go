@@ -19,7 +19,7 @@ func main() {
 	}
 
 	conf := config.ParseConfiguration("./mdservice/config/mdservice_conf.json")
-	conf.Path = utils.GetUserHome() + "/.mdfs/mdservice"
+	conf.Path = utils.GetUserHome() + "/.mdfs/mdservice/"
 
 	// save the new configuration to file
 	err = config.SetConfiguration(conf, conf.Path+"/.mdservice_conf.json")

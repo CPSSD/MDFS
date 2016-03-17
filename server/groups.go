@@ -606,40 +606,48 @@ func listGroupsMemberOf(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Wr
 	return
 }
 
-func checkBase(uuid uint64, targetPath string, md *MDService) (auth bool) {
+func checkBase(uuid uint64, targetPath string, mod string, md *MDService) (auth bool) {
 
 	basePath := strings.TrimSuffix(targetPath, "/"+path.Base(targetPath))
-	return checkEntry(uuid, basePath, md)
+	fmt.Println("Checking basePath: " + basePath)
+	return checkEntry(uuid, basePath, mod, md)
 }
 
 func checkEntry(uuid uint64, targetPath, mod string, md *MDService) (auth bool) {
 
 	// check all the d in dirs for Xecute
 	dirs := strings.Split(targetPath, "/")
-	owner, groups, permissions, err := getPerm(targetPath + "/.perm")
-	if err != nil {
-		fmt.Println("No permissions file")
-		return false
+	if targetPath == "/" || targetPath == "" {
+		fmt.Println("Root dir")
+		return true
 	}
 
-	for i, d := range dirs {
-		if i != 0 && i != len(dirs) {
-			fmt.Printf("%d, %s\n", i, d)
+	traverser := ""
 
+	for i, d := range dirs {
+		if i != 0 {
+			traverser = path.Join("/", traverser, d)
+			owner, groups, permissions, err := getPerm(md.getPath() + "files/" + traverser + "/")
+			if err != nil {
+				fmt.Println("NO PERM FILE AT: " + md.getPath() + "files" + traverser + "/.perm")
+				return false
+			}
+
+			fmt.Printf("%d, %s, %d\n", i, d, owner)
+
+			hasGroup := false
 			if owner == uuid {
 
 				return true
 
 			} else if groups != nil {
 
-				hasGroup := false
-
 				for _, g := range groups {
 					err = md.userDB.View(func(tx *bolt.Tx) error {
 
 						b := tx.Bucket([]byte("groups"))
 
-						v := b.Get(g)
+						v := b.Get(itob(g))
 
 						if v == nil {
 							return nil
@@ -673,5 +681,5 @@ func checkEntry(uuid uint64, targetPath, mod string, md *MDService) (auth bool) 
 		}
 	}
 
-	return true
+	return false
 }

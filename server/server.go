@@ -449,6 +449,10 @@ func createPerm(filepath string, owner uint64, groups []uint64, permissions []bo
 	tmpPerm.Groups = groups
 	tmpPerm.Permissions = permissions
 
+	fmt.Printf("%d,%v,%v", owner, groups, permissions)
+	fmt.Printf("%d,%v,%v", tmpPerm.Owner, tmpPerm.Groups, tmpPerm.Permissions)
+	fmt.Println("MAKNG PERM FILE AT", filepath+"/.perm")
+
 	return utils.StructToFile(tmpPerm, filepath+"/.perm")
 }
 
@@ -456,10 +460,14 @@ func getPerm(filepath string) (owner uint64, groups []uint64, permissions []bool
 
 	var tmpPerm utils.Perm
 
+	fmt.Println(filepath + "/.perm")
+
 	err = utils.FileToStruct(filepath+"/.perm", &tmpPerm)
 	owner = tmpPerm.Owner
 	groups = tmpPerm.Groups
 	permissions = tmpPerm.Permissions
+
+	fmt.Printf("%d,%v,%v", owner, groups, permissions)
 
 	return
 }
@@ -475,15 +483,31 @@ func handleRequest(conn net.Conn, in TCPServer) (err error) {
 	// var code uint8
 	fmt.Println("Ready to read code")
 
-	uuid, _ := r.ReadString('\n')
-	uintUuid, err := strconv.ParseUint(strings.TrimSpace(uuid), 10, 64)
-	if err != nil {
-		conn.Close()
-		return
-	}
-
 	// read in the handling code from the connected client
 	code, err := r.ReadByte()
+
+	var uintUuid uint64
+
+	// is this a new user?
+	if code == 10 {
+
+		fmt.Println("new user")
+		in.handleCode(0, code, conn, r, w)
+
+	} else {
+
+		fmt.Println("Existing user")
+
+	}
+
+	uuid, _ := r.ReadString('\n')
+	uintUuid, err = strconv.ParseUint(strings.TrimSpace(uuid), 10, 64)
+	if err != nil {
+		conn.Close()
+		return err
+	}
+
+	code, err = r.ReadByte()
 	// as long as there is no error in the code reading in..
 	for code != 0 {
 
@@ -557,7 +581,7 @@ func ls(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDServ
 
 		} else {
 
-			checkEntry(uuid, targetPath, md)
+			checkBase(uuid, targetPath, "r", md)
 
 			msg = msg + targetPath + ":," // note comma to denote newline
 			for _, file := range files {
@@ -610,7 +634,7 @@ func mkdir(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDS
 
 		// MkdirAll creates an entire file path if some dirs are missing
 
-		if !utils.IsHidden(targetPath) && checkBase(uuid, targetPath, md) {
+		if !utils.IsHidden(targetPath) && checkBase(uuid, targetPath, "w", md) {
 			os.Mkdir(md.getPath()+"files"+targetPath, 0777)
 			permissions := []bool{false, false, false, false, false, false}
 			var groups []uint64
@@ -733,7 +757,7 @@ func cd(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDServ
 			w.WriteByte(1)
 			w.Flush()
 
-		} else if !checkEntry(uuid, targetPath, md) { // success!
+		} else if !checkEntry(uuid, targetPath, "x", md) { // success!
 
 			fmt.Println("Access denied to dir " + targetPath)
 			// notify success to client (no specific code, just not 1 or 0)
@@ -1004,6 +1028,7 @@ func send(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDSe
 func newUser(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (err error) {
 
 	// get the uuid for the new user
+
 	var newUser utils.User
 	err = md.userDB.Update(func(tx *bolt.Tx) (err error) {
 
@@ -1039,7 +1064,7 @@ func newUser(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (er
 			return err
 		}
 
-		fmt.Println("writing uuid")
+		fmt.Println("writing uuid of: " + idStr)
 		w.WriteString(idStr + "\n")
 		fmt.Println("written")
 

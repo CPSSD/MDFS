@@ -16,9 +16,8 @@ import (
 
 func setup(r *bufio.Reader, w *bufio.Writer, thisUser *utils.User) (err error) {
 
-	reader := bufio.NewReader(os.Stdin)
-
 	fmt.Print("Please enter your username and hit enter: ")
+	reader := bufio.NewReader(os.Stdin)
 	uname, _ := reader.ReadString('\n')
 
 	thisUser.Uname = strings.TrimSpace(uname)
@@ -85,6 +84,7 @@ func setup(r *bufio.Reader, w *bufio.Writer, thisUser *utils.User) (err error) {
 	} else {
 
 		err = utils.FileToStruct(utils.GetUserHome()+"/.mdfs/client/"+uname+"/.user_data", &thisUser)
+		w.WriteByte(9)
 
 	}
 
