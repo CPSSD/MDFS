@@ -606,7 +606,49 @@ func listGroupsMemberOf(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Wr
 	return
 }
 
-func checkBase(uuid uint64, targetPath string, mod string, md *MDService) (auth bool) {
+func checkFile(uuid uint64, targetPath, mod string, md *MDService) (auth bool) {
+
+	_, _, _, owner, groups, permissions, err := getFile(md.getPath() + "files" + targetPath)
+	if err != nil {
+		fmt.Println("NO FILE AT: " + md.getPath() + "files" + targetPath)
+		return false
+	}
+
+	hasGroup := false
+	if groups != nil {
+
+		for _, g := range groups {
+			err = md.userDB.View(func(tx *bolt.Tx) error {
+
+				b := tx.Bucket([]byte("groups"))
+
+				v := b.Get(itob(g))
+
+				if v == nil {
+					return nil
+				}
+
+				var tmpGroup utils.Group
+				json.Unmarshal(v, &tmpGroup)
+
+				if utils.Contains(uuid, tmpGroup.Members) {
+					hasGroup = true
+				}
+				return nil
+			})
+			if hasGroup {
+				break
+			}
+		}
+
+	}
+
+	auth = (owner == uuid) || (hasGroup && permissions[0]) || permissions[1]
+
+	return checkBase(uuid, targetPath, mod, md) && auth
+}
+
+func checkBase(uuid uint64, targetPath, mod string, md *MDService) (auth bool) {
 
 	basePath := strings.TrimSuffix(targetPath, "/"+path.Base(targetPath))
 	fmt.Println("Checking basePath: " + basePath)
@@ -618,7 +660,7 @@ func checkEntry(uuid uint64, targetPath, mod string, md *MDService) (auth bool) 
 	// check all the d in dirs for Xecute
 	dirs := strings.Split(targetPath, "/")
 	if targetPath == "/" || targetPath == "" {
-		fmt.Println("Root dir")
+		fmt.Println("Root dir access")
 		return true
 	}
 
@@ -665,18 +707,17 @@ func checkEntry(uuid uint64, targetPath, mod string, md *MDService) (auth bool) 
 						break
 					}
 				}
-			} else {
+			}
 
-				switch mod {
-				case "r":
-					return (hasGroup && permissions[0]) || permissions[3]
+			switch mod {
+			case "r":
+				return (hasGroup && permissions[0]) || permissions[3]
 
-				case "w":
-					return (hasGroup && permissions[1]) || permissions[4]
+			case "w":
+				return (hasGroup && permissions[1]) || permissions[4]
 
-				case "x":
-					return (hasGroup && permissions[2]) || permissions[5]
-				}
+			case "x":
+				return (hasGroup && permissions[2]) || permissions[5]
 			}
 		}
 	}

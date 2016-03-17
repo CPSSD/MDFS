@@ -19,8 +19,9 @@ func setup(r *bufio.Reader, w *bufio.Writer, thisUser *utils.User) (err error) {
 	fmt.Print("Please enter your username and hit enter: ")
 	reader := bufio.NewReader(os.Stdin)
 	uname, _ := reader.ReadString('\n')
+	uname = strings.TrimSpace(uname)
 
-	thisUser.Uname = strings.TrimSpace(uname)
+	thisUser.Uname = uname
 	_, exists := os.Stat(utils.GetUserHome() + "/.mdfs/client/" + uname + "/.user_data")
 	if exists != nil { // not exist
 
@@ -57,7 +58,7 @@ func setup(r *bufio.Reader, w *bufio.Writer, thisUser *utils.User) (err error) {
 		fmt.Println("ready to send public key, sending...")
 
 		// send username and keys
-		w.WriteString(uname)
+		w.WriteString(uname + "\n")
 		w.Write([]byte(thisUser.Pubkey.N.String() + "\n"))
 		w.Write([]byte(strconv.Itoa(thisUser.Pubkey.E) + "\n"))
 		w.Flush()
@@ -706,7 +707,12 @@ func request(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string,
 	w.Flush()
 
 	success, _ := r.ReadByte()
-	if success != 3 {
+	if success == 3 {
+
+		fmt.Println("You do not have permission to request this file")
+		return nil
+
+	} else if success != 4 {
 
 		fmt.Printf("Invalid file request with response: %v\n", success)
 		return nil
@@ -806,10 +812,6 @@ func createGroup(r *bufio.Reader, w *bufio.Writer, args []string, thisUser *util
 		return err
 	}
 
-	// send current user (owner)
-	idStr := strconv.FormatUint(thisUser.Uuid, 10)
-	w.WriteString(idStr + "\n")
-
 	for i := 1; i < len(args); i++ {
 
 		// send group to create
@@ -846,9 +848,6 @@ func groupAdd(r *bufio.Reader, w *bufio.Writer, args []string, thisUser *utils.U
 		return err
 	}
 
-	// send current user (owner) for validation
-	idStr := strconv.FormatUint(thisUser.Uuid, 10)
-	w.WriteString(idStr + "\n")
 	w.WriteString(args[1] + "\n")
 	w.Flush()
 
@@ -897,9 +896,6 @@ func groupRemove(r *bufio.Reader, w *bufio.Writer, args []string, thisUser *util
 		return err
 	}
 
-	// send current user (owner) for validation
-	idStr := strconv.FormatUint(thisUser.Uuid, 10)
-	w.WriteString(idStr + "\n")
 	w.WriteString(args[1] + "\n")
 	w.Flush()
 
@@ -975,9 +971,6 @@ func deleteGroup(r *bufio.Reader, w *bufio.Writer, args []string, thisUser *util
 		return err
 	}
 
-	// send current user (owner) for validation and group
-	idStr := strconv.FormatUint(thisUser.Uuid, 10)
-	w.WriteString(idStr + "\n")
 	w.WriteString(args[1] + "\n")
 	w.Flush()
 
@@ -1049,11 +1042,6 @@ func listGroups(r *bufio.Reader, w *bufio.Writer, args []string, thisUser *utils
 			return nil
 		}
 	}
-
-	// send current user (owner) for membership / ownership
-	idStr := strconv.FormatUint(thisUser.Uuid, 10)
-	w.WriteString(idStr + "\n")
-	w.Flush()
 
 	for success, _ := r.ReadByte(); success != 2; success, _ = r.ReadByte() {
 

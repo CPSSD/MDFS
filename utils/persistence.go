@@ -29,11 +29,12 @@ type Group struct {
 }
 
 type FileDesc struct {
-	Protected   bool
-	Owner       uint64
-	Permissions uint16
 	Hash        string
 	Stnode      string
+	Protected   bool
+	Owner       uint64
+	Groups      []uint64
+	Permissions []bool
 }
 
 type Perm struct {

@@ -205,7 +205,7 @@ func (st StorageNode) handleCode(uuid uint64, code uint8, conn net.Conn, r *bufi
 
 		// check if file exists
 		var sendcode uint8
-		fp := st.getPath() + hash
+		fp := st.getPath() + "files/" + hash
 		if _, err := os.Stat(fp); err == nil {
 			sendcode = 3                 // file available code
 			err := w.WriteByte(sendcode) // let client know
@@ -227,7 +227,7 @@ func (st StorageNode) handleCode(uuid uint64, code uint8, conn net.Conn, r *bufi
 
 	case 2: // receive file from client
 		hash := utils.ReadHashAsString(r)
-		output := st.getPath() + hash
+		output := st.getPath() + "files/" + hash
 		utils.ReceiveFile(conn, r, output)
 
 		fmt.Println("md5 checksum of file is: " + hash)
@@ -418,18 +418,21 @@ func Start(in TCPServer) {
 	in.finish()
 }
 
-func createFile(fileout, hash, unid string, protected bool) error {
+func createFile(fileout, hash, unid string, protected bool, owner uint64, groups []uint64, permissions []bool) error {
 
 	var tmpFileDesc utils.FileDesc
 
 	tmpFileDesc.Hash = hash
 	tmpFileDesc.Stnode = unid
 	tmpFileDesc.Protected = protected
+	tmpFileDesc.Owner = owner
+	tmpFileDesc.Groups = groups
+	tmpFileDesc.Permissions = permissions
 
 	return utils.StructToFile(tmpFileDesc, fileout)
 }
 
-func getFile(fileout string) (hash, unid string, protected bool, err error) {
+func getFile(fileout string) (hash, unid string, protected bool, owner uint64, groups []uint64, permissions []bool, err error) {
 
 	var tmpFileDesc utils.FileDesc
 
@@ -437,6 +440,9 @@ func getFile(fileout string) (hash, unid string, protected bool, err error) {
 	hash = tmpFileDesc.Hash
 	unid = tmpFileDesc.Stnode
 	protected = tmpFileDesc.Protected
+	owner = tmpFileDesc.Owner
+	groups = tmpFileDesc.Groups
+	permissions = tmpFileDesc.Permissions
 
 	return
 }
@@ -483,6 +489,9 @@ func handleRequest(conn net.Conn, in TCPServer) (err error) {
 	// var code uint8
 	fmt.Println("Ready to read code")
 
+	v := fmt.Sprintf("%T", in)
+	fmt.Println(v)
+
 	// read in the handling code from the connected client
 	code, err := r.ReadByte()
 
@@ -491,11 +500,18 @@ func handleRequest(conn net.Conn, in TCPServer) (err error) {
 	// is this a new user?
 	if code == 10 {
 
-		fmt.Println("new user")
 		in.handleCode(0, code, conn, r, w)
+
+	} else if code == 11 || fmt.Sprintf("%T", in) == "*server.StorageNode" { // is this stnode specific?
+
+		fmt.Printf("%d read in for %s", code, v)
+		in.handleCode(0, code, conn, r, w)
+		conn.Close()
+		return nil
 
 	} else {
 
+		fmt.Println(code)
 		fmt.Println("Existing user")
 
 	}
@@ -543,7 +559,7 @@ func ls(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDServ
 	msg := ""
 
 	// if only the ls command was called
-	if lenArgs == 1 {
+	if lenArgs == 1 && checkEntry(uuid, currentDir, "r", md) {
 
 		fmt.Println(md.getPath() + "files" + currentDir)
 
@@ -577,11 +593,10 @@ func ls(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDServ
 		if err != nil {
 
 			// if it is not a directory, skip it and try the next arg
+			// or if not permitted
 			continue
 
-		} else {
-
-			checkBase(uuid, targetPath, "r", md)
+		} else if checkEntry(uuid, targetPath, "r", md) {
 
 			msg = msg + targetPath + ":," // note comma to denote newline
 			for _, file := range files {
@@ -680,7 +695,12 @@ func rmdir(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDS
 		// but this is not needed
 
 		src, err := os.Stat(md.getPath() + "files" + targetPath)
-		if !utils.IsHidden(targetPath) && err == nil && src.IsDir() {
+		if !utils.IsHidden(targetPath) && err == nil && src.IsDir() && checkBase(uuid, targetPath, "w", md) {
+			fi, _ := ioutil.ReadDir(md.getPath() + "files" + targetPath)
+			if len(fi) == 1 {
+
+				os.Remove(md.getPath() + "files" + targetPath + "/.perm")
+			}
 			os.Remove(md.getPath() + "files" + targetPath)
 		}
 	}
@@ -814,16 +834,25 @@ func request(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *M
 		// notify that is a dir
 		w.WriteByte(2)
 		w.Flush()
+		return nil
+
+	} else if !checkFile(uuid, filename, "x", md) {
+
+		fmt.Println("Unauthorised access to request file")
+		w.WriteByte(3)
+		w.Flush()
+		return nil
+
 	} else {
 
 		fmt.Println("File \"" + filename + "\" exists")
 
 		// notify success
-		w.WriteByte(3)
+		w.WriteByte(4)
 		w.Flush()
 	}
 
-	hash, unid, protected, err := getFile(md.getPath() + "files" + filename)
+	hash, unid, protected, _, _, _, err := getFile(md.getPath() + "files" + filename)
 
 	if protected {
 		w.WriteByte(1)
@@ -889,7 +918,7 @@ func send(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDSe
 
 	// check if the filename exists already
 	_, err = os.Stat(md.getPath() + "files" + filename)
-	if err != nil && !utils.IsHidden(filename) { // not a path ie. not a dir OR a file
+	if err != nil && !utils.IsHidden(filename) || !checkBase(uuid, filename, "w", md) { // not a path ie. not a dir OR a file
 
 		fmt.Println("File \"" + filename + "\" does not exist")
 
@@ -1017,7 +1046,9 @@ func send(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDSe
 		return nil
 	}
 
-	err = createFile(md.getPath()+"files"+filename, hash, unid, protected)
+	permissions := []bool{false, false}
+	var groups []uint64
+	err = createFile(md.getPath()+"files"+filename, hash, unid, protected, uuid, groups, permissions)
 	if err != nil {
 		panic(err)
 	}
