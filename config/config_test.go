@@ -11,8 +11,8 @@ func TestConfig(t *testing.T) {
 	var tests = []struct {
 		filename, protocol, host, port, path string
 	}{
-		{utils.GetUserHome() + "/.mdfs/stnode/.stnode_conf.json", "tcp", "localhost", "8081", utils.GetUserHome() + "/.mdfs/stnode"},
-		{utils.GetUserHome() + "/.mdfs/mdservice/.mdservice_conf.json", "tcp", "localhost", "1994", utils.GetUserHome() + "/.mdfs/mdservice"},
+		{utils.GetUserHome() + "/.mdfs/stnode/.stnode_conf.json", "tcp", "localhost", "8081", utils.GetUserHome() + "/.mdfs/stnode/"},
+		{utils.GetUserHome() + "/.mdfs/mdservice/.mdservice_conf.json", "tcp", "localhost", "1994", utils.GetUserHome() + "/.mdfs/mdservice/"},
 	}
 	for _, c := range tests {
 		got := config.ParseConfiguration(c.filename)
