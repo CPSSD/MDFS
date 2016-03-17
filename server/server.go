@@ -298,6 +298,21 @@ func (md MDService) handleCode(uuid uint64, code uint8, conn net.Conn, r *bufio.
 		}
 		fmt.Println("Fin rm")
 
+	case 8:
+		fmt.Println("In permit")
+		err := permit(uuid, conn, r, w, &md)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println("Fin permit")
+
+	case 9:
+		fmt.Println("In deny")
+		err := deny(uuid, conn, r, w, &md)
+		if err != nil {
+			panic(err)
+		}
+
 	case 10: // setup new user
 		fmt.Println("In user setup")
 		err := newUser(conn, r, w, &md)
@@ -732,7 +747,7 @@ func rm(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDServ
 		fmt.Printf("  in loop read in targetPath: %s", targetPath)
 
 		src, err := os.Stat(md.getPath() + "files" + targetPath)
-		if !utils.IsHidden(targetPath) && err == nil && !src.IsDir() {
+		if !utils.IsHidden(targetPath) && err == nil && !src.IsDir() && checkBase(uuid, targetPath, "w", md) {
 			os.Remove(md.getPath() + "files" + targetPath)
 		}
 	}

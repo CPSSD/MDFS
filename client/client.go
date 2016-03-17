@@ -245,6 +245,18 @@ func main() {
 				panic(err)
 			}
 
+		case "permit":
+			err := permit(currentDir, r, w, args, &thisUser)
+			if err != nil {
+				panic(err)
+			}
+
+		case "deny":
+			err := deny(r, w, args, &thisUser)
+			if err != nil {
+				panic(err)
+			}
+
 		case "exit":
 			// leave the program. The server will notice that the client has
 			// disconnected and will close the TCP connection on its side
@@ -1061,5 +1073,54 @@ func listGroups(r *bufio.Reader, w *bufio.Writer, args []string, thisUser *utils
 		fmt.Println()
 	}
 
+	return
+}
+
+func permit(currentDir string, r *bufio.Reader, w *bufio.Writer, args []string, thisUser *utils.User) (err error) {
+
+	if len(args) < 3 {
+		fmt.Println("Not enough arguments for call to permit")
+	}
+
+	w.WriteByte(8)
+	w.Flush()
+
+	w.WriteString(currentDir + "\n")
+	w.Flush()
+
+	switch args[1] {
+	case "-g":
+		w.WriteString(args[1] + "\n")
+	case "-w":
+		w.WriteString(args[1] + "\n")
+	default:
+		w.WriteString("INV" + "\n")
+		w.Flush()
+		fmt.Println("Invalid switch for call to permit; valid switches are -g or -w")
+		return nil
+	}
+	w.Flush()
+
+	err = w.WriteByte(uint8(len(args)))
+	w.Flush()
+	if err != nil {
+		panic(err)
+	}
+
+	w.WriteString(args[2] + "\n")
+	w.Flush()
+
+	for i := 3; i < len(args); i++ {
+		w.WriteString(args[i] + "\n")
+		w.Flush()
+	}
+
+	// 8
+	return nil
+}
+
+func deny(r *bufio.Reader, w *bufio.Writer, args []string, thisUser *utils.User) (err error) {
+
+	// 9
 	return
 }
