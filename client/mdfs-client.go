@@ -506,6 +506,7 @@ func send(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string, th
 	if len(args) < 2 {
 		return err
 	}
+	fmt.Println(len(args))
 
 	fmt.Println("Base of file :" + path.Base(args[1]))
 

@@ -627,12 +627,11 @@ func ls(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDServ
 						prefix = "-"
 						for _, b := range permissions {
 							if b {
-								prefix = prefix + "r"
+								prefix = prefix + "r--"
 							} else {
-								prefix = prefix + "-"
+								prefix = prefix + "---"
 							}
 						}
-						prefix = prefix + "    "
 					} else if err == nil && src.IsDir() {
 
 						fmt.Println("Looking for path: " + md.getPath() + "files" + path.Join(currentDir, file.Name(), ".perm"))
@@ -733,16 +732,15 @@ func ls(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDServ
 
 							}
 							ownerStr = "  " + strconv.FormatUint(owner, 10)
+
 							prefix = "-"
 							for _, b := range permissions {
 								if b {
-									prefix = prefix + "r"
+									prefix = prefix + "r--"
 								} else {
-									prefix = prefix + "-"
+									prefix = prefix + "---"
 								}
 							}
-							prefix = prefix + "    "
-
 						} else if err == nil && src.IsDir() {
 
 							fmt.Println("Looking for perm1 path: " + md.getPath() + "files" + path.Join(targetPath, file.Name(), ".perm"))
