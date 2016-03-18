@@ -673,10 +673,56 @@ func checkEntry(uuid uint64, targetPath, mod string, md *MDService) (auth bool) 
 	}
 
 	traverser := ""
+	auth = true
 
 	for i, d := range dirs {
+
+		traverser = path.Join("/", traverser, d)
+		fmt.Printf("Auth = %b, Traverser = %s\n", auth, traverser)
 		if i != 0 {
-			traverser = path.Join("/", traverser, d)
+
+			owner, groups, permissions, err := getPerm(md.getPath() + "files/" + traverser + "/")
+			if err != nil {
+				fmt.Println("NO PERM FILE AT: " + md.getPath() + "files" + traverser + "/.perm")
+				return false
+			}
+
+			fmt.Printf("%d, %s, %d\n", i, d, owner)
+
+			hasGroup := false
+			if groups != nil {
+
+				for _, g := range groups {
+					err = md.userDB.View(func(tx *bolt.Tx) error {
+
+						b := tx.Bucket([]byte("groups"))
+
+						v := b.Get(itob(g))
+
+						if v == nil {
+							return nil
+						}
+
+						var tmpGroup utils.Group
+						json.Unmarshal(v, &tmpGroup)
+
+						if utils.Contains(uuid, tmpGroup.Members) {
+							hasGroup = true
+						}
+						return nil
+					})
+					if hasGroup {
+						break
+					}
+				}
+			}
+			auth = (owner == uuid) || (hasGroup && permissions[2]) || permissions[5]
+		}
+		if !auth {
+			return auth
+		}
+
+		if i == len(dirs)-1 {
 			owner, groups, permissions, err := getPerm(md.getPath() + "files/" + traverser + "/")
 			if err != nil {
 				fmt.Println("NO PERM FILE AT: " + md.getPath() + "files" + traverser + "/.perm")
@@ -731,7 +777,8 @@ func checkEntry(uuid uint64, targetPath, mod string, md *MDService) (auth bool) 
 		}
 	}
 
-	return false
+	fmt.Printf("Auth = %b, Traverser = %s\n", auth, traverser)
+	return auth
 }
 
 func permit(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (err error) {

@@ -605,6 +605,7 @@ func ls(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDServ
 			if !utils.IsHidden(file.Name()) {
 				targetPath := path.Join(currentDir, file.Name())
 				prefix := ""
+				ownerStr := ""
 				if verbose == 1 {
 					src, err := os.Stat(md.getPath() + "files" + targetPath)
 					if err == nil && !src.IsDir() {
@@ -622,25 +623,28 @@ func ls(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDServ
 
 						fmt.Printf("File read stats %v\n", permissions)
 
+						ownerStr = "  " + strconv.FormatUint(owner, 10)
 						prefix = "-"
 						for _, b := range permissions {
 							if b {
-								prefix = prefix + "r"
+								prefix = prefix + "r--"
 							} else {
-								prefix = prefix + "-"
+								prefix = prefix + "---"
 							}
 						}
 					} else if err == nil && src.IsDir() {
 
 						fmt.Println("Looking for path: " + md.getPath() + "files" + path.Join(currentDir, file.Name(), ".perm"))
 
-						_, _, permissions, err := getPerm(path.Join(md.getPath(), "files", currentDir, file.Name()))
+						owner, _, permissions, err := getPerm(path.Join(md.getPath(), "files", currentDir, file.Name()))
 						if err != nil {
 
 							fmt.Println("Error finding .permissions for path: " + path.Join(currentDir, file.Name()))
 							return nil
 
 						} else {
+
+							ownerStr = "  " + strconv.FormatUint(owner, 10)
 							prefix = "d"
 							for i, b := range permissions {
 								if b && i%3 == 0 {
@@ -655,7 +659,7 @@ func ls(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDServ
 							}
 						}
 					}
-					prefix = prefix + "\t"
+					prefix = prefix + ownerStr + "\t"
 				}
 
 				fmt.Printf("Writing %d of %d = %s\n", i, len(files), file.Name())
@@ -663,13 +667,16 @@ func ls(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDServ
 				w.Flush()
 			}
 		}
-	} else {
+		return nil
+	} else if lenArgs == 1 {
 		w.WriteByte(0)
 		w.Flush()
+		return nil
 	}
 
 	// loop for dealing with one or more args
-	for i := 1; i < lenArgs; i++ {
+
+	for j := 1; j < lenArgs; j++ {
 
 		// reading in this arg
 		targetPath, _ := r.ReadString('\n')
@@ -685,7 +692,6 @@ func ls(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDServ
 		if err != nil {
 
 			// if it is not a directory, skip it and try the next arg
-			// or if not permitted
 			w.WriteByte(0)
 			w.Flush()
 			continue
@@ -710,37 +716,43 @@ func ls(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDServ
 				if !utils.IsHidden(file.Name()) {
 
 					prefix := ""
+					ownerStr := ""
 					if verbose == 1 {
-						src, err := os.Stat(md.getPath() + "files" + targetPath)
-						if err == nil && !src.IsDir() {
-							fmt.Println("Looking for path: " + md.getPath() + "files" + path.Join(targetPath, file.Name()))
+						src, err := os.Stat(md.getPath() + "files" + targetPath + "/" + file.Name())
+						fmt.Println("IN VERBOSE: " + md.getPath() + "files" + targetPath + file.Name())
 
-							_, _, _, _, _, permissions, err := getFile(md.getPath() + "files" + path.Join(targetPath, file.Name()))
+						if err == nil && !src.IsDir() {
+							fmt.Println("Looking for file1 path: " + md.getPath() + "files" + path.Join(targetPath, file.Name()))
+
+							_, _, _, owner, _, permissions, err := getFile(md.getPath() + "files" + path.Join(targetPath, file.Name()))
 							if err != nil {
 
 								fmt.Println("Error finding .permissions for path: " + path.Join(targetPath, file.Name()))
-								return nil
+								break
 
 							}
+							ownerStr = "  " + strconv.FormatUint(owner, 10)
+
 							prefix = "-"
 							for _, b := range permissions {
 								if b {
-									prefix = prefix + "r"
+									prefix = prefix + "r--"
 								} else {
-									prefix = prefix + "-"
+									prefix = prefix + "---"
 								}
 							}
 						} else if err == nil && src.IsDir() {
 
-							fmt.Println("Looking for path: " + md.getPath() + "files" + path.Join(targetPath, file.Name(), ".perm"))
+							fmt.Println("Looking for perm1 path: " + md.getPath() + "files" + path.Join(targetPath, file.Name(), ".perm"))
 
-							_, _, permissions, err := getPerm(md.getPath() + "files" + path.Join(targetPath, file.Name()))
+							owner, _, permissions, err := getPerm(md.getPath() + "files" + path.Join(targetPath, file.Name()))
 							if err != nil {
 
 								fmt.Println("Error finding .permissions for path: " + path.Join(targetPath, file.Name()))
-								return nil
+								break
 
 							} else {
+								ownerStr = "  " + strconv.FormatUint(owner, 10)
 								prefix = "d"
 								for i, b := range permissions {
 									if b && i%3 == 0 {
@@ -755,11 +767,11 @@ func ls(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDServ
 								}
 							}
 						}
-						prefix = prefix + "\t"
+						prefix = prefix + ownerStr + "\t"
 
 					}
 
-					fmt.Printf("Writing %d of %d = %s\n", i, len(files), file.Name())
+					fmt.Printf("Writing %d of %d = %s = %s\n", i, len(files), file.Name(), prefix)
 					w.WriteString(prefix + file.Name() + "\n")
 					w.Flush()
 				}
