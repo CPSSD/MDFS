@@ -11,6 +11,8 @@ type Configuration struct {
 	Protocol string
 	Host     string
 	Port     string
+	MdHost   string
+	MdPort   string
 	Path     string
 	Unid     string
 }

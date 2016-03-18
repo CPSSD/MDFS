@@ -90,10 +90,17 @@ func (st *StorageNode) setup() (err error) {
 	if st.getUnid() == "-1" {
 		// stnode will register with the mdserv here
 		protocol := "tcp"
-		socket := "localhost:1994"
+		port := st.conf.MdPort
+		host := st.conf.MdHost
 
-		fmt.Println("Connecting to mdserv")
-		conn, _ := net.Dial(protocol, socket)
+		addr := host + ":" + port
+
+		fmt.Println("Connecting to mdserv at: " + addr)
+		conn, err := net.Dial(protocol, addr)
+		if err != nil {
+			fmt.Println("Could not connect to mdserv")
+			os.Exit(0)
+		}
 		defer conn.Close()
 
 		// read and write buffer to the mdserv

@@ -98,17 +98,30 @@ func setup(r *bufio.Reader, w *bufio.Writer, thisUser *utils.User) (err error) {
 
 func main() {
 
-	// config will be read locally later
+	reader := bufio.NewReader(os.Stdin)
+
+	fmt.Println("Please enter the IP address of the mdservice to connect to.\n")
+	fmt.Print("Address: ")
+	host, _ := reader.ReadString('\n')
+	fmt.Println("----------------------------------------------------------")
+	host = strings.TrimSpace(host)
+
+	fmt.Println("Please enter the port of the mdservice to connect to.\n")
+	fmt.Print("Port: ")
+	port, _ := reader.ReadString('\n')
+	fmt.Println("----------------------------------------------------------")
+	port = strings.TrimSpace(port)
+
 	protocol := "tcp"
-	socket := "localhost:1994"
+	addr := host + ":" + port
 
 	// will be filled out in setup, contents of User struct
 	// may change slightly to include extra data
 	var thisUser utils.User
 
-	conn, err := net.Dial(protocol, socket)
+	conn, err := net.Dial(protocol, addr)
 	if err != nil {
-		fmt.Println("No mdserv available through " + protocol + " connection at " + socket)
+		fmt.Println("No mdserv available through " + protocol + " connection at " + addr)
 		os.Exit(0)
 	}
 	defer conn.Close()
@@ -137,7 +150,6 @@ func main() {
 
 	// assume we will always start in the root directory (for safety)
 	currentDir := "/"
-	reader := bufio.NewReader(os.Stdin)
 
 	// NOTE: after commenting, I have noticed definite code duplication with regards
 	// to sending the args for a command and sending the sendcode as well. On the server
