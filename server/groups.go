@@ -36,7 +36,7 @@ func createGroup(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, m
 
 		groupName, _ := r.ReadString('\n')
 		groupName = strings.TrimSpace(groupName)
-		fmt.Printf("  in loop read in groupName: %s", groupName)
+		fmt.Printf("  in loop read in groupName: %s\n", groupName)
 
 		// create the group in the database
 		err = md.userDB.Update(func(tx *bolt.Tx) (err error) {
@@ -111,7 +111,7 @@ func groupAdd(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *
 
 		if tmpGroup.Owner != uuid {
 
-			fmt.Printf("Owner: %d, and uuid: %d", tmpGroup.Owner, uuid)
+			fmt.Printf("Owner: %d, and uuid: %d\n", tmpGroup.Owner, uuid)
 
 			w.WriteByte(2)
 			w.Flush()
@@ -236,7 +236,7 @@ func groupRemove(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, m
 
 		if tmpGroup.Owner != uuid {
 
-			fmt.Printf("Owner: %d, and uuid: %d", tmpGroup.Owner, uuid)
+			fmt.Printf("Owner: %d, and uuid: %d\n", tmpGroup.Owner, uuid)
 
 			w.WriteByte(2)
 			w.Flush()
@@ -768,7 +768,7 @@ func checkEntry(uuid uint64, targetPath, mod string, md *MDService) (auth bool) 
 				return (hasGroup && permissions[0]) || permissions[3]
 
 			case "w":
-				fmt.Printf("Checking w, perm = %b", permissions[4])
+				fmt.Printf("Checking w, perm = %b\n", permissions[4])
 				return (hasGroup && permissions[1]) || permissions[4]
 
 			case "x":

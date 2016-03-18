@@ -46,7 +46,7 @@ func main() {
 		}
 
 		fmt.Println("Storage node has been initialised.")
-		fmt.Printf("The configuration file can be found at %s/.stnode_conf.json.\n", path)
+		fmt.Printf("The configuration file can be found at %s.stnode_conf.json.\n", path)
 
 	case "2": // configure metadata service
 		path := home + "/.mdfs/mdservice/"
@@ -97,8 +97,8 @@ func getMdPort(reader *bufio.Reader) string {
 func getMdHost(reader *bufio.Reader) string {
 
 	// metadata service is at this address
-	fmt.Println("Please enter the IP address of the metadata service you wish to register with (e.g. \"192.168.1.1\")\n")
-	fmt.Println("Enter \"localhost\" if metadata service is running on this host.")
+	fmt.Println("Please enter the IP address of the metadata service you wish to register with (e.g. \"192.168.1.1\")")
+	fmt.Println("Enter \"localhost\" if metadata service is running on this host.\n")
 	fmt.Print("Address: ")
 	host, _ := reader.ReadString('\n')
 	fmt.Println("----------------------------------------------------------")

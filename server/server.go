@@ -478,8 +478,8 @@ func createPerm(filepath string, owner uint64, groups []uint64, permissions []bo
 	tmpPerm.Groups = groups
 	tmpPerm.Permissions = permissions
 
-	fmt.Printf("%d,%v,%v", owner, groups, permissions)
-	fmt.Printf("%d,%v,%v", tmpPerm.Owner, tmpPerm.Groups, tmpPerm.Permissions)
+	fmt.Printf("%d,%v,%v\n", owner, groups, permissions)
+	fmt.Printf("%d,%v,%v\n", tmpPerm.Owner, tmpPerm.Groups, tmpPerm.Permissions)
 	fmt.Println("MAKNG PERM FILE AT", filepath+"/.perm")
 
 	return utils.StructToFile(tmpPerm, filepath+"/.perm")
@@ -496,7 +496,7 @@ func getPerm(filepath string) (owner uint64, groups []uint64, permissions []bool
 	groups = tmpPerm.Groups
 	permissions = tmpPerm.Permissions
 
-	fmt.Printf("%d,%v,%v", owner, groups, permissions)
+	fmt.Printf("%d,%v,%v\n", owner, groups, permissions)
 
 	return
 }
@@ -527,7 +527,7 @@ func handleRequest(conn net.Conn, in TCPServer) (err error) {
 
 	} else if code == 11 || fmt.Sprintf("%T", in) == "*server.StorageNode" { // is this stnode specific?
 
-		fmt.Printf("%d read in for %s", code, v)
+		fmt.Printf("%d read in for %s\n", code, v)
 		in.handleCode(0, code, conn, r, w)
 		conn.Close()
 		return nil
@@ -857,7 +857,7 @@ func rmdir(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDS
 			targetPath = path.Join(currentDir, targetPath)
 		}
 
-		fmt.Printf("  in loop read in targetPath: %s", targetPath)
+		fmt.Printf("  in loop read in targetPath: %s\n", targetPath)
 
 		// this will only remove a dir that is empty, else it does nothing
 		// BUG-NOTE: this command will also currently delete files (there is not
@@ -902,7 +902,7 @@ func rm(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDServ
 			targetPath = path.Join(currentDir, targetPath)
 		}
 
-		fmt.Printf("  in loop read in targetPath: %s", targetPath)
+		fmt.Printf("  in loop read in targetPath: %s\n", targetPath)
 
 		src, err := os.Stat(md.getPath() + "files" + targetPath)
 		if !utils.IsHidden(targetPath) && err == nil && !src.IsDir() && checkBase(uuid, targetPath, "w", md) {
