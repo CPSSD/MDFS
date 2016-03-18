@@ -16,7 +16,8 @@ import (
 
 func setup(r *bufio.Reader, w *bufio.Writer, thisUser *utils.User) (err error) {
 
-	fmt.Print("Please enter your username and hit enter: ")
+	fmt.Println("Please enter your username:\n")
+	fmt.Print("Username: ")
 	reader := bufio.NewReader(os.Stdin)
 	uname, _ := reader.ReadString('\n')
 	uname = strings.TrimSpace(uname)
@@ -25,15 +26,11 @@ func setup(r *bufio.Reader, w *bufio.Writer, thisUser *utils.User) (err error) {
 	_, exists := os.Stat(utils.GetUserHome() + "/.mdfs/client/" + uname + "/.user_data")
 	if exists != nil { // not exist
 
-		fmt.Println("Make sure the local user dir exist")
-
 		// Make sure the local user dir exists
 		err := os.MkdirAll(utils.GetUserHome()+"/.mdfs/client/"+uname+"/files", 0777)
 		if err != nil {
 			return err
 		}
-
-		fmt.Println("Notify mdserv of new user")
 
 		// notify mdservice that this is a new user (SENDCODE 10)
 		err = w.WriteByte(10) //
@@ -42,12 +39,8 @@ func setup(r *bufio.Reader, w *bufio.Writer, thisUser *utils.User) (err error) {
 		}
 		w.Flush()
 
-		fmt.Println("local user setup")
-
 		// local user setup
 		utils.GenUserKeys(utils.GetUserHome() + "/.mdfs/client/" + uname + "/.private_key")
-
-		fmt.Println("keys set up")
 
 		err = utils.FileToStruct(utils.GetUserHome()+"/.mdfs/client/"+uname+"/.private_key", &thisUser.Privkey)
 		if err != nil {
@@ -55,15 +48,11 @@ func setup(r *bufio.Reader, w *bufio.Writer, thisUser *utils.User) (err error) {
 		}
 		thisUser.Pubkey = &thisUser.Privkey.PublicKey
 
-		fmt.Println("ready to send public key, sending...")
-
 		// send username and keys
 		w.WriteString(uname + "\n")
 		w.Write([]byte(thisUser.Pubkey.N.String() + "\n"))
 		w.Write([]byte(strconv.Itoa(thisUser.Pubkey.E) + "\n"))
 		w.Flush()
-
-		fmt.Println("reading uuid")
 
 		uuid, _ := r.ReadString('\n')
 		thisUser.Uuid, err = strconv.ParseUint(strings.TrimSpace(uuid), 10, 64)
@@ -71,14 +60,10 @@ func setup(r *bufio.Reader, w *bufio.Writer, thisUser *utils.User) (err error) {
 			return err
 		}
 
-		fmt.Println("read uuid, store to file")
-
 		err = utils.StructToFile(*thisUser, utils.GetUserHome()+"/.mdfs/client/"+uname+"/.user_data")
 		if err != nil {
 			return err
 		}
-
-		fmt.Println("stored")
 
 		//NOTE: NOT COMPLETE
 
@@ -99,14 +84,14 @@ func setup(r *bufio.Reader, w *bufio.Writer, thisUser *utils.User) (err error) {
 func main() {
 
 	reader := bufio.NewReader(os.Stdin)
-
-	fmt.Println("Please enter the IP address of the mdservice to connect to.\n")
+	fmt.Println("----------------------------------------------------------")
+	fmt.Println("Please enter the location of the metadata service you wish to connect to (eg: 192.168.0.10)\n")
 	fmt.Print("Address: ")
 	host, _ := reader.ReadString('\n')
 	fmt.Println("----------------------------------------------------------")
 	host = strings.TrimSpace(host)
 
-	fmt.Println("Please enter the port of the mdservice to connect to.\n")
+	fmt.Println("Please enter the port of the metadata service to connect to.\n")
 	fmt.Print("Port: ")
 	port, _ := reader.ReadString('\n')
 	fmt.Println("----------------------------------------------------------")
@@ -119,11 +104,14 @@ func main() {
 	// may change slightly to include extra data
 	var thisUser utils.User
 
+	fmt.Println("Connecting to metadata service...")
 	conn, err := net.Dial(protocol, addr)
 	if err != nil {
 		fmt.Println("No mdserv available through " + protocol + " connection at " + addr)
 		os.Exit(0)
 	}
+	fmt.Println("Connection established.")
+
 	defer conn.Close()
 
 	// read and write buffer to the mdserv
@@ -139,10 +127,13 @@ func main() {
 	// and private key of this user will be locally accessible when
 	// needed by the user client in a location defined in the
 	// setup method.
+
+	fmt.Println("----------------------------------------------------------")
 	err = setup(r, w, &thisUser)
 	if err != nil {
 		panic(err)
 	}
+	fmt.Println("----------------------------------------------------------")
 
 	idStr := strconv.FormatUint(thisUser.Uuid, 10)
 	w.WriteString(idStr + "\n")
@@ -518,9 +509,6 @@ func send(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string, th
 	if len(args) < 2 {
 		return err
 	}
-	fmt.Println(len(args))
-
-	fmt.Println("Base of file :" + path.Base(args[1]))
 
 	// Format the file to send (absolute or relative)
 	filepath := ""
@@ -551,7 +539,7 @@ func send(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string, th
 
 	} else {
 
-		fmt.Println("Filepath to send is: \"" + filepath + "\"")
+		fmt.Println("Sending: \"" + filepath + "\"")
 
 	}
 
@@ -565,10 +553,8 @@ func send(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string, th
 
 	// Send current dir
 	w.WriteString(currentDir + "\n")
-	fmt.Println("Send: current dir: " + currentDir)
 	// Send filename to mdserv
 	w.WriteString(path.Base(filepath) + "\n")
-	fmt.Println("Send: filename: " + filepath)
 
 	w.Flush()
 
@@ -587,7 +573,7 @@ func send(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string, th
 	// Encryption or not?
 	if len(args) >= 3 {
 		if args[2] != "--protect" && args[2] != "-p" {
-			fmt.Println("Invalid command option")
+			fmt.Println("Invalid argument option: \"" + args[2] + "\"")
 			w.WriteByte(2)
 			w.Flush()
 			return nil
@@ -606,8 +592,6 @@ func send(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string, th
 
 			w.WriteString(args[i] + "\n")
 			w.Flush()
-
-			fmt.Println("Sent: " + args[i])
 
 			uuid, _ := r.ReadString('\n')
 			uuid = strings.TrimSpace(uuid)
@@ -639,7 +623,7 @@ func send(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string, th
 		}
 
 		filepath = encrypFile
-		fmt.Println("Encrypted file to: " + filepath + " from " + encrypFile)
+		fmt.Println("File successfully protected")
 
 	} else {
 
@@ -647,26 +631,19 @@ func send(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string, th
 		w.Flush()
 	}
 
-	fmt.Println("Computing hash")
 	// get hash of the file to send to the stnode and mdserv
 	hash, err := utils.ComputeMd5(filepath)
 	if err != nil {
 		panic(err)
 	}
 
-	checksum := hex.EncodeToString(hash)
-	fmt.Println("Computed hash: " + checksum)
-
-	fmt.Println("File does not exist, sending hash")
+	//checksum := hex.EncodeToString(hash)
 
 	// Send hash to mdserv
-	fmt.Println("Sending hash to mdserv: " + checksum)
 	err = utils.WriteHash(w, hash)
 	if err != nil {
 		return err
 	}
-
-	fmt.Println("Hash sent, see are there stnodes available")
 
 	// See are there stnodes available
 	avail, _ := r.ReadByte()
@@ -681,8 +658,6 @@ func send(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string, th
 
 		protocol = strings.TrimSpace(protocol)
 		nAddress = strings.TrimSpace(nAddress)
-
-		fmt.Println("protocol: " + protocol + ", address: " + nAddress)
 
 		// connect to stnode
 		conn, err = net.Dial(protocol, nAddress)
@@ -720,14 +695,12 @@ func send(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string, th
 	}
 
 	// send hash to stnode
-	fmt.Println("Sending hash to stnode: " + checksum)
 	err = utils.WriteHash(ws, hash)
 	if err != nil {
 		return err
 	}
 
 	// send file to stnode
-	fmt.Println("Sending: " + filepath)
 	utils.SendFile(conn, ws, filepath)
 
 	// Send success/fail to mdserv to log the file send or not
@@ -767,6 +740,8 @@ func request(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string,
 	w.WriteString(args[1] + "\n")
 	w.Flush()
 
+	fmt.Println("Requesting: " + path.Join(currentDir, args[1]))
+
 	success, _ := r.ReadByte()
 	if success == 3 {
 
@@ -775,7 +750,7 @@ func request(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string,
 
 	} else if success != 4 {
 
-		fmt.Printf("Invalid file request with response: %v\n", success)
+		fmt.Println("Invalid file request")
 		return nil
 	}
 
@@ -797,7 +772,6 @@ func request(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string,
 	nAddress, _ := r.ReadString('\n')
 
 	hash = strings.TrimSpace(hash)
-	fmt.Println("Received hash: " + hash)
 	protocol = strings.TrimSpace(protocol)
 	nAddress = strings.TrimSpace(nAddress)
 
@@ -838,9 +812,10 @@ func request(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string,
 		err = utils.DecryptFile(encrypFile, output, *thisUser)
 		if err != nil {
 
-			fmt.Println(err)
+			fmt.Println("Your key does not match the lock for this file")
 			return nil
 		}
+		fmt.Println("Protected file successfully unlocked")
 
 	} else {
 
@@ -848,7 +823,8 @@ func request(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string,
 
 	}
 
-	fmt.Println("File exists")
+	fmt.Println("Successfully received file")
+	fmt.Println("File stored at: " + output)
 
 	return
 }
@@ -923,7 +899,6 @@ func groupAdd(r *bufio.Reader, w *bufio.Writer, args []string, thisUser *utils.U
 
 		// send uuid to add
 		w.WriteString(args[i] + "\n")
-		fmt.Println("Wrote: " + args[i])
 		w.Flush()
 	}
 
@@ -971,7 +946,6 @@ func groupRemove(r *bufio.Reader, w *bufio.Writer, args []string, thisUser *util
 
 		// send uuid to remove
 		w.WriteString(args[i] + "\n")
-		fmt.Println("Wrote: " + args[i])
 		w.Flush()
 	}
 
