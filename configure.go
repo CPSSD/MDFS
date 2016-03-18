@@ -14,9 +14,8 @@ func main() {
 	fmt.Println("This is the installation program for the MDFS")
 	fmt.Println("----------------------------------------------------------")
 	fmt.Println("Please select which software you would like to install")
-	fmt.Println("1) Client software")
-	fmt.Println("2) Storage node software")
-	fmt.Println("3) Metadata service")
+	fmt.Println("1) Storage node software")
+	fmt.Println("2) Metadata service")
 
 	// get user selection
 	reader := bufio.NewReader(os.Stdin)
@@ -28,13 +27,11 @@ func main() {
 	home := utils.GetUserHome()
 
 	switch selection {
-	case "1": // configure client software
-		break
-
-	case "2": // configure storage node
+	case "1": // configure storage node
 		path := home + "/.mdfs/stnode"
+		host := getHost(reader)
 		port := getConfig(reader)
-		err := setup(path, port, "./storagenode/config/", "stnode_conf.json")
+		err := setup(path, port, host, "./storagenode/config/", "stnode_conf.json")
 		if err != nil {
 			panic(err)
 		}
@@ -42,10 +39,10 @@ func main() {
 		fmt.Println("Storage node has been initialised.")
 		fmt.Printf("The configuration file can be found at %s/.stnode_conf.json.\n", path)
 
-	case "3": // configure metadata service
+	case "2": // configure metadata service
 		path := home + "/.mdfs/mdservice"
-		port := getConfig(reader)
-		err := setup(path, port, "./mdservice/config/", "mdservice_conf.json")
+		port := getPort(reader)
+		err := setup(path, port, "localhost", "./mdservice/config/", "mdservice_conf.json")
 		if err != nil {
 			panic(err)
 		}
@@ -64,7 +61,7 @@ func main() {
 	}
 }
 
-func getConfig(reader *bufio.Reader) string {
+func getPort(reader *bufio.Reader) string {
 
 	// listen on this port
 	fmt.Println("Please enter the port you want the service to listen on.\n")
@@ -76,7 +73,20 @@ func getConfig(reader *bufio.Reader) string {
 	return port
 }
 
-func setup(path string, port string, sample string, fname string) error {
+func getHost(reader *bufio.Reader) string {
+
+	// metadata service is at this address
+	fmt.Println("Please enter the IP address of the metadata service. (e.g. \"192.168.1.1\")\n")
+	fmt.Println("Enter \"localhost\" if metadata service is running on this host.")
+	fmt.Print("Address: ")
+	host, _ := reader.ReadString('\n')
+	fmt.Println("----------------------------------------------------------")
+	host = strings.TrimSpace(host)
+
+	return host
+}
+
+func setup(path string, port string, host string, sample string, fname string) error {
 
 	// create the supplied file path
 	err := os.MkdirAll(path, 0700)
@@ -88,6 +98,7 @@ func setup(path string, port string, sample string, fname string) error {
 	conf := config.ParseConfiguration(sample + fname)
 	conf.Path = path // change the path variable
 	conf.Port = port // change the port variable
+	conf.Host = host
 
 	// encode the new object to a json file
 	err = config.SetConfiguration(conf, path+"/."+fname)
