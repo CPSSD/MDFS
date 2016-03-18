@@ -648,7 +648,7 @@ func send(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string, th
 	// See are there stnodes available
 	avail, _ := r.ReadByte()
 
-	var conn net.Conn
+	var conns net.Conn
 
 	for avail != 2 {
 
@@ -660,10 +660,9 @@ func send(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string, th
 		nAddress = strings.TrimSpace(nAddress)
 
 		// connect to stnode
-		conn, err = net.Dial(protocol, nAddress)
+		conns, err = net.Dial(protocol, nAddress)
 		if err != nil {
 
-			fmt.Println("Error connecting to stnode")
 			w.WriteByte(1)
 			w.Flush()
 
@@ -683,10 +682,10 @@ func send(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string, th
 		return nil
 	}
 
-	defer conn.Close()
+	defer conns.Close()
 
 	// create a read and write buffer for the connection
-	ws := bufio.NewWriter(conn)
+	ws := bufio.NewWriter(conns)
 
 	// tell the stnode we are sending a file
 	err = ws.WriteByte(2)
@@ -701,7 +700,7 @@ func send(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string, th
 	}
 
 	// send file to stnode
-	utils.SendFile(conn, ws, filepath)
+	utils.SendFile(conns, ws, filepath)
 
 	// Send success/fail to mdserv to log the file send or not
 	w.WriteByte(1)

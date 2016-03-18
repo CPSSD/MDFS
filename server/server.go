@@ -101,7 +101,6 @@ func (st *StorageNode) setup() (err error) {
 			fmt.Println("Could not connect to mdserv")
 			os.Exit(0)
 		}
-		defer conn.Close()
 
 		// read and write buffer to the mdserv
 		r := bufio.NewReader(conn)
@@ -129,6 +128,7 @@ func (st *StorageNode) setup() (err error) {
 		st.setUnid(unid)
 
 		fmt.Println("Received unid: " + unid)
+		conn.Close()
 	} else {
 
 		fmt.Println("Stnode has UNID: " + st.getUnid())
