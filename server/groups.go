@@ -805,8 +805,9 @@ func permit(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MD
 	fmt.Println("Target = " + md.getPath() + "files" + targetPath)
 
 	src, err := os.Stat(md.getPath() + "files" + targetPath)
-	if !utils.IsHidden(targetPath) && err == nil {
+	if err != nil || utils.IsHidden(targetPath) {
 		// exists, not hidden path
+		return nil
 	}
 
 	var groups []uint64
@@ -943,8 +944,9 @@ func deny(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDSe
 	fmt.Println("Target = " + md.getPath() + "files" + targetPath)
 
 	src, err := os.Stat(md.getPath() + "files" + targetPath)
-	if !utils.IsHidden(targetPath) && err == nil {
+	if err != nil || utils.IsHidden(targetPath) {
 		// exists, not hidden path
+		return nil
 	}
 
 	var groups []uint64
