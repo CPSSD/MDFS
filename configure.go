@@ -30,11 +30,12 @@ func main() {
 	case "1": // configure storage node
 		path := home + "/.mdfs/stnode/"
 		port := getPort(reader)
+		host := getHost(reader)
 
 		mdhost := getMdHost(reader)
 		mdport := getMdPort(reader)
 
-		err := setup(path, port, "localhost", mdport, mdhost, "./storagenode/config/", "stnode_conf.json")
+		err := setup(path, port, host, mdport, mdhost, "./storagenode/config/", "stnode_conf.json")
 		if err != nil {
 			panic(err)
 		}
@@ -51,7 +52,9 @@ func main() {
 	case "2": // configure metadata service
 		path := home + "/.mdfs/mdservice/"
 		port := getPort(reader)
-		err := setup(path, port, "localhost", "", "", "./mdservice/config/", "mdservice_conf.json")
+		host := getHost(reader)
+
+		err := setup(path, port, host, "", "", "./mdservice/config/", "mdservice_conf.json")
 		if err != nil {
 			panic(err)
 		}
@@ -80,6 +83,18 @@ func getPort(reader *bufio.Reader) string {
 	port = strings.TrimSpace(port)
 
 	return port
+}
+
+func getHost(reader *bufio.Reader) string {
+
+	// listen on this port
+	fmt.Println("Please enter the IP address you want the service to listen at.\n")
+	fmt.Print("Address: ")
+	host, _ := reader.ReadString('\n')
+	fmt.Println("----------------------------------------------------------")
+	host = strings.TrimSpace(host)
+
+	return host
 }
 
 func getMdPort(reader *bufio.Reader) string {
