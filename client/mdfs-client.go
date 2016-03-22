@@ -564,9 +564,13 @@ func send(r *bufio.Reader, w *bufio.Writer, currentDir string, args []string, th
 
 		fmt.Println("Bad send request, check file name again")
 		return nil
+	} else if exists == 3 {
+
+		fmt.Println("Permission denied")
+		return nil
 	} else if exists != 2 {
 
-		fmt.Println("Bad response from mdserv")
+		fmt.Println("Bad reponse from metadata service")
 		return nil
 	}
 

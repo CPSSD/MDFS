@@ -1091,7 +1091,15 @@ func send(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDSe
 
 	// check if the filename exists already
 	_, err = os.Stat(md.getPath() + "files" + filename)
-	if err != nil && !utils.IsHidden(filename) || !checkBase(uuid, filename, "w", md) { // not a path ie. not a dir OR a file
+	if !checkBase(uuid, filename, "w", md) {
+
+		fmt.Println("User does not have permission to send to this directory.")
+		w.WriteByte(3)
+		w.Flush()
+
+		return nil
+
+	} else if err != nil && !utils.IsHidden(filename) { // not a path ie. not a dir OR a file
 
 		fmt.Println("File \"" + filename + "\" does not exist")
 
@@ -1101,7 +1109,7 @@ func send(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDSe
 
 	} else { // notify the client that the file exists with error code "1"
 
-		fmt.Println("Good send")
+		fmt.Println("File already exists in this directory")
 		w.WriteByte(1)
 		w.Flush()
 
