@@ -729,9 +729,9 @@ func checkEntry(uuid uint64, targetPath, mod string, md *MDService) (auth bool) 
 			}
 
 			hasGroup := false
-			if owner == uuid {
+			if owner != uuid {
 
-				return true
+				auth = false
 
 			} else if groups != nil {
 
@@ -762,13 +762,13 @@ func checkEntry(uuid uint64, targetPath, mod string, md *MDService) (auth bool) 
 
 			switch mod {
 			case "r":
-				return (hasGroup && permissions[0]) || permissions[3]
+				auth = auth || (hasGroup && permissions[0]) || permissions[3]
 
 			case "w":
-				return (hasGroup && permissions[1]) || permissions[4]
+				auth = auth || (hasGroup && permissions[1]) || permissions[4]
 
 			case "x":
-				return (hasGroup && permissions[2]) || permissions[5]
+				auth = auth || (hasGroup && permissions[2]) || permissions[5]
 			}
 		}
 	}
@@ -1020,14 +1020,17 @@ func deny(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDSe
 
 				if strings.Contains(addPerms, "r") {
 					permissions[3] = false
+					fmt.Print("r")
 
 				}
 				if strings.Contains(addPerms, "w") {
 					permissions[4] = false
+					fmt.Print("w")
 
 				}
 				if strings.Contains(addPerms, "x") {
 					permissions[5] = false
+					fmt.Print("x")
 
 				}
 				fmt.Println(" to " + targetPath)
