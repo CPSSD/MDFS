@@ -609,14 +609,14 @@ func listGroupsMemberOf(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Wr
 
 func checkFile(uuid uint64, targetPath, mod string, md *MDService) (auth bool) {
 
-	fmt.Println("Getting filestats for: " + path.Join(md.getPath(), "files", targetPath))
+	//fmt.Println("Getting filestats for: " + path.Join(md.getPath(), "files", targetPath))
 	_, _, _, owner, groups, permissions, err := getFile(path.Join(md.getPath(), "files", targetPath))
 	if err != nil {
 		fmt.Println("NO FILE AT: " + md.getPath() + "files" + targetPath)
 		return false
 	}
 
-	fmt.Printf("filestats: %d, %v, %v\n", owner, groups, permissions)
+	//fmt.Printf("filestats: %d, %v, %v\n", owner, groups, permissions)
 
 	hasGroup := false
 	if groups != nil {
@@ -651,7 +651,7 @@ func checkFile(uuid uint64, targetPath, mod string, md *MDService) (auth bool) {
 
 	base := checkBase(uuid, targetPath, mod, md)
 
-	fmt.Printf("%b == %b, %b\n", auth, base, permissions[1])
+	//fmt.Printf("%b == %b, %b\n", auth, base, permissions[1])
 
 	return base && auth
 }
@@ -659,16 +659,18 @@ func checkFile(uuid uint64, targetPath, mod string, md *MDService) (auth bool) {
 func checkBase(uuid uint64, targetPath, mod string, md *MDService) (auth bool) {
 
 	basePath := strings.TrimSuffix(targetPath, "/"+path.Base(targetPath))
-	fmt.Println("Checking basePath: " + basePath)
+	//fmt.Println("Checking basePath: " + basePath)
 	return checkEntry(uuid, basePath, mod, md)
 }
 
 func checkEntry(uuid uint64, targetPath, mod string, md *MDService) (auth bool) {
 
+	fmt.Printf("\tChecking %s permissions for user %d on \"%s\"\n", mod, uuid, targetPath)
+
 	// check all the d in dirs for Xecute
 	dirs := strings.Split(targetPath, "/")
 	if targetPath == "/" || targetPath == "" {
-		fmt.Println("Root dir access")
+		fmt.Println("\tRoot directory access permitted")
 		return true
 	}
 
@@ -678,16 +680,13 @@ func checkEntry(uuid uint64, targetPath, mod string, md *MDService) (auth bool) 
 	for i, d := range dirs {
 
 		traverser = path.Join("/", traverser, d)
-		fmt.Printf("Auth = %b, Traverser = %s\n", auth, traverser)
 		if i != 0 {
 
 			owner, groups, permissions, err := getPerm(md.getPath() + "files/" + traverser + "/")
 			if err != nil {
-				fmt.Println("NO PERM FILE AT: " + md.getPath() + "files" + traverser + "/.perm")
+				fmt.Println("\t\tError: no .perm file exists at \"" + md.getPath() + "files" + traverser + "/.perm\"")
 				return false
 			}
-
-			fmt.Printf("%d, %s, %d\n", i, d, owner)
 
 			hasGroup := false
 			if groups != nil {
@@ -725,11 +724,9 @@ func checkEntry(uuid uint64, targetPath, mod string, md *MDService) (auth bool) 
 		if i == len(dirs)-1 {
 			owner, groups, permissions, err := getPerm(md.getPath() + "files/" + traverser + "/")
 			if err != nil {
-				fmt.Println("NO PERM FILE AT: " + md.getPath() + "files" + traverser + "/.perm")
+				fmt.Println("\t\tError: no .perm file exists at \"" + md.getPath() + "files" + traverser + "/.perm\"")
 				return false
 			}
-
-			fmt.Printf("%d, %s, %d\n", i, d, owner)
 
 			hasGroup := false
 			if owner == uuid {
@@ -768,7 +765,6 @@ func checkEntry(uuid uint64, targetPath, mod string, md *MDService) (auth bool) 
 				return (hasGroup && permissions[0]) || permissions[3]
 
 			case "w":
-				fmt.Printf("Checking w, perm = %b\n", permissions[4])
 				return (hasGroup && permissions[1]) || permissions[4]
 
 			case "x":
@@ -777,7 +773,7 @@ func checkEntry(uuid uint64, targetPath, mod string, md *MDService) (auth bool) 
 		}
 	}
 
-	fmt.Printf("Auth = %b, Traverser = %s\n", auth, traverser)
+	//fmt.Printf("Auth = %b, Traverser = %s\n", auth, traverser)
 	return auth
 }
 
@@ -789,11 +785,10 @@ func permit(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MD
 	flag, _ := r.ReadString('\n')
 	flag = strings.TrimSpace(flag)
 	if flag == "INV" {
-		fmt.Println("Invalid flag from client")
+		fmt.Printf("\t\tInvalid flag from user %d\n", uuid)
 		return nil
 	}
 	lenArgs, _ := r.ReadByte()
-	fmt.Printf("lenArgs = %v\n", lenArgs)
 
 	targetPath, _ := r.ReadString('\n')
 	targetPath = strings.TrimSpace(targetPath)
@@ -802,11 +797,13 @@ func permit(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MD
 		targetPath = path.Join(currentDir, targetPath)
 	}
 
-	fmt.Println("Target = " + md.getPath() + "files" + targetPath)
+	fmt.Printf("\tUser %d called permit %s on: \"%s\"\n", uuid, flag, targetPath)
 
 	src, err := os.Stat(md.getPath() + "files" + targetPath)
 	if err != nil || utils.IsHidden(targetPath) {
 		// exists, not hidden path
+
+		fmt.Printf("\tUser %d call to permit %s on: \"%s\" was invalid: target does not exist\n", uuid, flag, targetPath)
 		return nil
 	}
 
@@ -815,7 +812,6 @@ func permit(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MD
 	if src.IsDir() {
 		addPerms, _ := r.ReadString('\n')
 		addPerms = strings.TrimSpace(addPerms)
-		fmt.Println("HERE IN PERMIT")
 
 		for i := 4; i < int(lenArgs); i++ {
 			group, _ := r.ReadString('\n')
@@ -825,56 +821,65 @@ func permit(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MD
 			}
 			groups = append(groups, gid)
 		}
-		fmt.Println("HERE IN PERMIT")
 
 		if checkEntry(uuid, targetPath, "owner", md) {
 
 			owner, existingGroups, permissions, err := getPerm(md.getPath() + "files" + targetPath)
 			if err != nil {
-				fmt.Println("Error finding .perm for dir: " + targetPath)
+				fmt.Println("\t\tError: no .perm file exists at \"" + md.getPath() + "files" + targetPath + "/.perm\"")
 				return nil
 			}
 
 			switch flag {
 			case "-g":
+				fmt.Printf("\tPermitting groups ")
 				for _, g := range groups {
 
 					if !utils.Contains(g, existingGroups) {
+						fmt.Printf("%d, ", g)
 						existingGroups = append(existingGroups, g)
-						fmt.Printf("Permitting group: %d\n", g)
 					}
 				}
+				fmt.Print("for: ")
 				if strings.Contains(addPerms, "r") {
 					permissions[0] = true
-
+					fmt.Print("r")
 				}
 				if strings.Contains(addPerms, "w") {
 					permissions[1] = true
+					fmt.Print("w")
 
 				}
 				if strings.Contains(addPerms, "x") {
 					permissions[2] = true
+					fmt.Print("x")
 
 				}
+				fmt.Println(" to " + targetPath)
 
 			case "-w":
+				fmt.Printf("\tPermitting world for: ")
 				if strings.Contains(addPerms, "r") {
 					permissions[3] = true
+					fmt.Print("r")
 
 				}
 				if strings.Contains(addPerms, "w") {
 					permissions[4] = true
+					fmt.Print("w")
 
 				}
 				if strings.Contains(addPerms, "x") {
 					permissions[5] = true
+					fmt.Print("x")
 
 				}
+				fmt.Println(" to " + targetPath)
 			}
 
 			err = createPerm(md.getPath()+"files"+targetPath, owner, existingGroups, permissions)
 			if err != nil {
-				fmt.Println("Error re-writing .perm for dir: " + targetPath)
+				fmt.Println("\t\tError: there was an issue setting .perm for \"" + md.getPath() + "files" + targetPath + "/.perm\"\n\t\tCould not set new permissions")
 			}
 		}
 
@@ -892,28 +897,33 @@ func permit(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MD
 		if checkFile(uuid, targetPath, "x", md) {
 			hash, stnode, protected, owner, existingGroups, permissions, err := getFile(md.getPath() + "files" + targetPath)
 			if err != nil {
-				fmt.Println("Error finding file_perms for file: " + targetPath)
+				fmt.Println("\t\tError: no permissions could be read for file: \"" + md.getPath() + "files" + targetPath + "\"\n\t\tCould not set new permissions")
 				return nil
 			}
 
 			switch flag {
 			case "-g":
+				fmt.Printf("\tPermitting groups ")
+
 				for _, g := range groups {
 
 					if !utils.Contains(g, existingGroups) {
 						existingGroups = append(existingGroups, g)
-						fmt.Printf("Permitting group: %d\n", g)
+						fmt.Printf("%d, ", g)
 					}
 				}
+				fmt.Println("for request access to " + targetPath)
+
 				permissions[0] = true
 
 			case "-w":
+				fmt.Println("\tPermitting world for request access to " + targetPath)
 				permissions[1] = true
 			}
 
 			err = createFile(md.getPath()+"files"+targetPath, hash, stnode, protected, owner, existingGroups, permissions)
 			if err != nil {
-				fmt.Println("Error re-writing .perm for dir: " + targetPath)
+				fmt.Println("\t\tError re-writing permissions for file: " + targetPath)
 			}
 		}
 	}
@@ -928,11 +938,10 @@ func deny(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDSe
 	flag, _ := r.ReadString('\n')
 	flag = strings.TrimSpace(flag)
 	if flag == "INV" {
-		fmt.Println("Invalid flag from client")
+		fmt.Printf("\t\tInvalid flag from user %d\n", uuid)
 		return nil
 	}
 	lenArgs, _ := r.ReadByte()
-	fmt.Printf("lenArgs = %v\n", lenArgs)
 
 	targetPath, _ := r.ReadString('\n')
 	targetPath = strings.TrimSpace(targetPath)
@@ -941,11 +950,13 @@ func deny(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDSe
 		targetPath = path.Join(currentDir, targetPath)
 	}
 
-	fmt.Println("Target = " + md.getPath() + "files" + targetPath)
+	fmt.Printf("\tUser %d called deny %s on: \"%s\"\n", uuid, flag, targetPath)
 
 	src, err := os.Stat(md.getPath() + "files" + targetPath)
 	if err != nil || utils.IsHidden(targetPath) {
 		// exists, not hidden path
+
+		fmt.Printf("\tUser %d call to deny %s on: \"%s\" was invalid: target does not exist\n", uuid, flag, targetPath)
 		return nil
 	}
 
@@ -954,7 +965,6 @@ func deny(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDSe
 	if src.IsDir() {
 		addPerms, _ := r.ReadString('\n')
 		addPerms = strings.TrimSpace(addPerms)
-		fmt.Println("HERE IN PERMIT")
 
 		for i := 4; i < int(lenArgs); i++ {
 			group, _ := r.ReadString('\n')
@@ -964,41 +974,50 @@ func deny(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDSe
 			}
 			groups = append(groups, gid)
 		}
-		fmt.Println("HERE IN PERMIT")
 
 		if checkEntry(uuid, targetPath, "owner", md) {
 
 			owner, existingGroups, permissions, err := getPerm(md.getPath() + "files" + targetPath)
 			if err != nil {
-				fmt.Println("Error finding .perm for dir: " + targetPath)
+				fmt.Println("\t\tError: no .perm file exists at \"" + md.getPath() + "files" + targetPath + "/.perm\"")
 				return nil
 			}
 
 			switch flag {
 			case "-g":
+				fmt.Printf("\tDenying groups ")
 				for _, g := range groups {
 					for i, gr := range existingGroups {
 						if g == gr {
 							existingGroups = append(existingGroups[:i], existingGroups[i+1:]...)
-							fmt.Printf("Denying group: %d\n", g)
+							fmt.Printf("%d, ", g)
 							break
 						}
 					}
 				}
+				fmt.Print("for: ")
+
 				if strings.Contains(addPerms, "r") {
 					permissions[0] = false
+					fmt.Print("r")
 
 				}
 				if strings.Contains(addPerms, "w") {
 					permissions[1] = false
+					fmt.Print("w")
 
 				}
 				if strings.Contains(addPerms, "x") {
 					permissions[2] = false
+					fmt.Print("x")
 
 				}
+				fmt.Println(" to " + targetPath)
 
 			case "-w":
+
+				fmt.Printf("\tDenying world for: ")
+
 				if strings.Contains(addPerms, "r") {
 					permissions[3] = false
 
@@ -1011,11 +1030,12 @@ func deny(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDSe
 					permissions[5] = false
 
 				}
+				fmt.Println(" to " + targetPath)
 			}
 
 			err = createPerm(md.getPath()+"files"+targetPath, owner, existingGroups, permissions)
 			if err != nil {
-				fmt.Println("Error re-writing .perm for dir: " + targetPath)
+				fmt.Println("\t\tError: there was an issue setting .perm for \"" + md.getPath() + "files" + targetPath + "/.perm\"\n\t\tCould not set new permissions")
 			}
 		}
 
@@ -1033,30 +1053,35 @@ func deny(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDSe
 		if checkFile(uuid, targetPath, "x", md) {
 			hash, stnode, protected, owner, existingGroups, permissions, err := getFile(md.getPath() + "files" + targetPath)
 			if err != nil {
-				fmt.Println("Error finding file_perms for file: " + targetPath)
+				fmt.Println("\t\tError: no permissions could be read for file: \"" + md.getPath() + "files" + targetPath + "\"\n\t\tCould not set new permissions")
 				return nil
 			}
 
 			switch flag {
 			case "-g":
+				fmt.Printf("\tDenying groups ")
+
 				for _, g := range groups {
 					for i, gr := range existingGroups {
 						if g == gr {
 							existingGroups = append(existingGroups[:i], existingGroups[i+1:]...)
-							fmt.Printf("Denying group: %d\n", g)
+							fmt.Printf("%d, ", g)
 							break
 						}
 					}
 				}
+				fmt.Println("for request access to " + targetPath)
+
 				permissions[0] = false
 
 			case "-w":
+				fmt.Println("\tDenying world for request access to " + targetPath)
 				permissions[1] = false
 			}
 
 			err = createFile(md.getPath()+"files"+targetPath, hash, stnode, protected, owner, existingGroups, permissions)
 			if err != nil {
-				fmt.Println("Error re-writing .perm for dir: " + targetPath)
+				fmt.Println("\t\tError re-writing permissions for file: " + targetPath)
 			}
 		}
 	}
