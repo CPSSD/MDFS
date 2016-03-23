@@ -1,0 +1,31 @@
+Massively Distributed Filesystem client, version 1.0-demo
+The following is a list of available commands and their usage.
+All commands will require the appropriate permissions (read, write or execute) to be successful
+
+Usage: ls		[-V] [directory...]
+ 
+       pwd
+       cd 		[directory]
+       mkdir		[directory...] 
+       rmdir 		[directory...]
+      
+       send 		[filename] [-p [UUID...]]
+       request 		[filename]
+       rm 		[filename...]
+      
+       permit 		[-w (directory [rwx] | filename) | -g (directory [rwx] [GID...])]
+       deny 		[-w (directory [rwx] | filename) | -g (directory [rwx] [GID...])]
+      
+       create-group 	[groupname...]
+       delete-group 	[GID]
+      
+       group-add 	[GID] [UUID...]
+       group-remove 	[GID] [UUID...]
+       group-ls 	[GID]
+      
+       list-groups 	(-m | -o | -mV | -oV | -V)
+
+       exit
+
+Report bugs to <thewalla07@gmail.com> || <jacob.okeeffe22@mail.dcu.ie> with the subject line "MDFS bug [short_description]"
+For complete documentation, see the README.md file at <https://github.com/CPSSD/MDFS/README.md>
