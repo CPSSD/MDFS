@@ -68,9 +68,7 @@ func (st StorageNode) getUnid() string {
 
 func (st *StorageNode) setUnid(unid string) (err error) {
 
-	fmt.Println(st.getUnid())
 	st.conf.Unid = unid
-	fmt.Println(st.getUnid())
 	err = config.SetConfiguration(st.conf, utils.GetUserHome()+"/.mdfs/stnode/.stnode_conf.json")
 	if err != nil {
 		return err
@@ -84,8 +82,6 @@ func (st *StorageNode) parseConfig() {
 }
 
 func (st *StorageNode) setup() (err error) {
-
-	fmt.Println(st.getUnid())
 
 	if st.getUnid() == "-1" {
 		// stnode will register with the mdserv here
@@ -120,14 +116,14 @@ func (st *StorageNode) setup() (err error) {
 		w.WriteString(st.getHost() + ":" + st.getPort() + "\n")
 		w.Flush()
 
-		fmt.Println("Waiting to receive unid")
+		fmt.Println("Waiting to receive UNID")
 		// get the unid for this stnode
 		unid, _ := r.ReadString('\n')
 		unid = strings.TrimSpace(unid)
 
 		st.setUnid(unid)
 
-		fmt.Println("Received unid: " + unid)
+		fmt.Println("Received UNID: " + unid)
 		conn.Close()
 	} else {
 
@@ -214,6 +210,7 @@ func (st StorageNode) handleCode(uuid uint64, code uint8, conn net.Conn, r *bufi
 		var sendcode uint8
 		fp := st.getPath() + "files/" + hash
 		if _, err := os.Stat(fp); err == nil {
+			fmt.Println("File with hash " + hash + " exists") 
 			sendcode = 3                 // file available code
 			err := w.WriteByte(sendcode) // let client know
 			if err != nil {
@@ -222,8 +219,10 @@ func (st StorageNode) handleCode(uuid uint64, code uint8, conn net.Conn, r *bufi
 			w.Flush()
 
 			// send the file
+			fmt.Println("Sending file " + hash)
 			utils.SendFile(conn, w, fp)
 		} else {
+			fmt.Println("File with hash "+ hash + " does not exist")
 			sendcode = 4
 			err := w.WriteByte(sendcode) // let client know
 			if err != nil {
@@ -233,12 +232,15 @@ func (st StorageNode) handleCode(uuid uint64, code uint8, conn net.Conn, r *bufi
 		}
 
 	case 2: // receive file from client
+		fmt.Println("Receiving file")
+
 		hash := utils.ReadHashAsString(r)
 		output := st.getPath() + "files/" + hash
 		utils.ReceiveFile(conn, r, output)
 
-		fmt.Println("md5 checksum of file is: " + hash)
+		fmt.Println("File received; md5 checksum of file is: " + hash)
 	}
+	fmt.Println()
 	conn.Close()
 }
 
@@ -255,7 +257,7 @@ func (md MDService) handleCode(uuid uint64, code uint8, conn net.Conn, r *bufio.
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println("Fin ls")
+		fmt.Println("Fin ls\n")
 
 	case 2:
 		fmt.Println("In mkdir")
@@ -263,7 +265,7 @@ func (md MDService) handleCode(uuid uint64, code uint8, conn net.Conn, r *bufio.
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println("Fin mkdir")
+		fmt.Println("Fin mkdir\n")
 
 	case 3:
 		fmt.Println("In rmdir")
@@ -271,7 +273,7 @@ func (md MDService) handleCode(uuid uint64, code uint8, conn net.Conn, r *bufio.
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println("Fin rmdir")
+		fmt.Println("Fin rmdir\n")
 
 	case 4: // cd
 		fmt.Println("In cd")
@@ -279,7 +281,7 @@ func (md MDService) handleCode(uuid uint64, code uint8, conn net.Conn, r *bufio.
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println("Fin cd")
+		fmt.Println("Fin cd\n")
 
 	case 5: // request
 		fmt.Println("In request")
@@ -287,7 +289,7 @@ func (md MDService) handleCode(uuid uint64, code uint8, conn net.Conn, r *bufio.
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println("Fin request")
+		fmt.Println("Fin request\n")
 
 	case 6: // send
 		fmt.Println("In send")
@@ -295,7 +297,7 @@ func (md MDService) handleCode(uuid uint64, code uint8, conn net.Conn, r *bufio.
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println("Fin send")
+		fmt.Println("Fin send\n")
 
 	case 7: // rm
 		fmt.Println("In rm")
@@ -303,7 +305,7 @@ func (md MDService) handleCode(uuid uint64, code uint8, conn net.Conn, r *bufio.
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println("Fin rm")
+		fmt.Println("Fin rm\n")
 
 	case 8:
 		fmt.Println("In permit")
@@ -311,7 +313,7 @@ func (md MDService) handleCode(uuid uint64, code uint8, conn net.Conn, r *bufio.
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println("Fin permit")
+		fmt.Println("Fin permit\n")
 
 	case 9:
 		fmt.Println("In deny")
@@ -319,7 +321,7 @@ func (md MDService) handleCode(uuid uint64, code uint8, conn net.Conn, r *bufio.
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println("Fin deny")
+		fmt.Println("Fin deny\n")
 
 	case 10: // setup new user
 		fmt.Println("In user setup")
@@ -327,7 +329,7 @@ func (md MDService) handleCode(uuid uint64, code uint8, conn net.Conn, r *bufio.
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println("Fin user setup")
+		fmt.Println("Fin user setup\n")
 
 	case 11: // setup new storage node
 		fmt.Println("In stnode setup")
@@ -335,7 +337,7 @@ func (md MDService) handleCode(uuid uint64, code uint8, conn net.Conn, r *bufio.
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println("Fin stnode setup")
+		fmt.Println("Fin stnode setup\n")
 
 	case 20:
 		fmt.Println("In createGroup")
@@ -343,7 +345,7 @@ func (md MDService) handleCode(uuid uint64, code uint8, conn net.Conn, r *bufio.
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println("Fin createGroup")
+		fmt.Println("Fin createGroup\n")
 
 	case 21:
 		fmt.Println("In groupAdd")
@@ -351,7 +353,7 @@ func (md MDService) handleCode(uuid uint64, code uint8, conn net.Conn, r *bufio.
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println("Fin groupAdd")
+		fmt.Println("Fin groupAdd\n")
 
 	case 22:
 		fmt.Println("In groupRemove")
@@ -359,7 +361,7 @@ func (md MDService) handleCode(uuid uint64, code uint8, conn net.Conn, r *bufio.
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println("Fin groupRemove")
+		fmt.Println("Fin groupRemove\n")
 
 	case 23:
 		fmt.Println("In groupLs")
@@ -367,7 +369,7 @@ func (md MDService) handleCode(uuid uint64, code uint8, conn net.Conn, r *bufio.
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println("Fin groupLs")
+		fmt.Println("Fin groupLs\n")
 
 	case 24:
 		fmt.Println("In deleteGroup")
@@ -375,7 +377,7 @@ func (md MDService) handleCode(uuid uint64, code uint8, conn net.Conn, r *bufio.
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println("Fin deleteGroup")
+		fmt.Println("Fin deleteGroup\n")
 
 	case 25:
 		fmt.Println("In listGroups")
@@ -383,7 +385,7 @@ func (md MDService) handleCode(uuid uint64, code uint8, conn net.Conn, r *bufio.
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println("Fin listGroups")
+		fmt.Println("Fin listGroups\n")
 	}
 }
 
@@ -420,7 +422,7 @@ func Start(in TCPServer) {
 	}
 	defer ln.Close() // close the listener when the function exits
 
-	fmt.Println("Listening on " + in.getPort())
+	fmt.Println("Listening on " + host + ":" + port)
 
 	// run loop forever (or until ctrl-c)
 	for {
@@ -429,7 +431,7 @@ func Start(in TCPServer) {
 		conn, err := ln.Accept()
 		if err != nil {
 
-			fmt.Println("Error accpting:", err.Error())
+			fmt.Println("Error accepting:", err.Error())
 			panic(err)
 		}
 
@@ -501,12 +503,6 @@ func handleRequest(conn net.Conn, in TCPServer) (err error) {
 	r := bufio.NewReader(conn)
 	w := bufio.NewWriter(conn)
 
-	// var code uint8
-	fmt.Println("Ready to read code")
-
-	v := fmt.Sprintf("%T", in)
-	fmt.Println(v)
-
 	// read in the handling code from the connected client
 	code, err := r.ReadByte()
 
@@ -519,17 +515,11 @@ func handleRequest(conn net.Conn, in TCPServer) (err error) {
 
 	} else if code == 11 || fmt.Sprintf("%T", in) == "*server.StorageNode" { // is this stnode specific?
 
-		fmt.Printf("%d read in for %s\n", code, v)
 		in.handleCode(0, code, conn, r, w)
-		conn.Close()
+		defer conn.Close()
 		return nil
 
-	} else {
-
-		fmt.Println(code)
-		fmt.Println("Existing user")
-
-	}
+	} 
 
 	uuid, _ := r.ReadString('\n')
 	uintUuid, err = strconv.ParseUint(strings.TrimSpace(uuid), 10, 64)
@@ -538,12 +528,13 @@ func handleRequest(conn net.Conn, in TCPServer) (err error) {
 		return err
 	}
 
+
+	fmt.Println("User " + strings.TrimSpace(uuid) + " has connected\n")
+
 	code, err = r.ReadByte()
 	// as long as there is no error in the code reading in..
 	for code != 0 {
 
-		// Print the code to terminal
-		fmt.Printf("Read in code: %v\n", code)
 		in.handleCode(uintUuid, code, conn, r, w)
 		r = bufio.NewReader(conn)
 		w = bufio.NewWriter(conn)
@@ -553,7 +544,7 @@ func handleRequest(conn net.Conn, in TCPServer) (err error) {
 	}
 
 	// print when a connection to the client closes along with the error (if any)
-	fmt.Printf("Connection close with code of %v and err of: %v\n", code, err)
+	fmt.Printf("User %d's connection has closed with code of %v and error of: %v\n", uintUuid, code, err)
 	return
 }
 
@@ -616,7 +607,7 @@ func ls(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDServ
 
 						if err != nil {
 
-							fmt.Println("Error finding .permissions for path: " + path.Join(currentDir, file.Name()))
+							fmt.Println("\t\tError finding .permissions for path: " + path.Join(currentDir, file.Name()))
 							return nil
 
 						}
@@ -639,7 +630,7 @@ func ls(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDServ
 						owner, _, permissions, err := getPerm(path.Join(md.getPath(), "files", currentDir, file.Name()))
 						if err != nil {
 
-							fmt.Println("Error finding .permissions for path: " + path.Join(currentDir, file.Name()))
+							fmt.Println("\t\tError finding .permissions for path: " + path.Join(currentDir, file.Name()))
 							return nil
 
 						} else {
@@ -727,7 +718,7 @@ func ls(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDServ
 							_, _, _, owner, _, permissions, err := getFile(md.getPath() + "files" + path.Join(targetPath, file.Name()))
 							if err != nil {
 
-								fmt.Println("Error finding .permissions for path: " + path.Join(targetPath, file.Name()))
+								fmt.Println("\t\tError finding .permissions for path: " + path.Join(targetPath, file.Name()))
 								break
 
 							}
@@ -748,7 +739,7 @@ func ls(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDServ
 							owner, _, permissions, err := getPerm(md.getPath() + "files" + path.Join(targetPath, file.Name()))
 							if err != nil {
 
-								fmt.Println("Error finding .permissions for path: " + path.Join(targetPath, file.Name()))
+								fmt.Println("\t\tError finding .permissions for path: " + path.Join(targetPath, file.Name()))
 								break
 
 							} else {
@@ -794,13 +785,10 @@ func mkdir(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDS
 
 	// get lenArgs for mkdir
 	lenArgs, _ := r.ReadByte()
-	fmt.Printf("lenArgs = %v\n", lenArgs)
 
 	// if no more than "mkdir" is sent, nothing will happen
 	// if errors occur, the dir will just not be made
 	for i := 1; i < int(lenArgs); i++ {
-
-		fmt.Printf("  in loop at pos %d ready to read\n", i)
 
 		// for each arg, get the target path
 		targetPath, _ := r.ReadString('\n')
@@ -810,15 +798,13 @@ func mkdir(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDS
 			targetPath = path.Join(currentDir, targetPath)
 		}
 
-		// print the target for terminal's sake
-		fmt.Printf("  in loop read in targetPath: %s\n", targetPath)
-
-		// MkdirAll creates an entire file path if some dirs are missing
-
 		if !utils.IsHidden(targetPath) && checkBase(uuid, targetPath, "w", md) {
+
 			os.Mkdir(md.getPath()+"files"+targetPath, 0777)
+
 			permissions := []bool{false, false, false, false, false, false}
 			var groups []uint64
+
 			err := createPerm(md.getPath()+"files"+targetPath, uuid, groups, permissions)
 			if err != nil {
 				return err
@@ -836,12 +822,9 @@ func rmdir(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDS
 
 	// get len args for rmdir
 	lenArgs, _ := r.ReadByte()
-	fmt.Printf("lenArgs = %v\n", lenArgs)
 
 	// only does something if more than "rmdir" is called, as above
 	for i := 1; i < int(lenArgs); i++ {
-
-		fmt.Printf("  in loop at pos %d ready to read\n", i)
 
 		targetPath, _ := r.ReadString('\n')
 		targetPath = strings.TrimSpace(targetPath)
@@ -849,8 +832,6 @@ func rmdir(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDS
 		if !path.IsAbs(targetPath) {
 			targetPath = path.Join(currentDir, targetPath)
 		}
-
-		fmt.Printf("  in loop read in targetPath: %s\n", targetPath)
 
 		// this will only remove a dir that is empty, else it does nothing
 		// BUG-NOTE: this command will also currently delete files (there is not
@@ -881,12 +862,9 @@ func rm(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDServ
 
 	// get len args for rmdir
 	lenArgs, _ := r.ReadByte()
-	fmt.Printf("lenArgs = %v\n", lenArgs)
 
 	// only does something if more than "rmdir" is called, as above
 	for i := 1; i < int(lenArgs); i++ {
-
-		fmt.Printf("  in loop at pos %d ready to read\n", i)
 
 		targetPath, _ := r.ReadString('\n')
 		targetPath = strings.TrimSpace(targetPath)
@@ -894,8 +872,6 @@ func rm(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDServ
 		if !path.IsAbs(targetPath) {
 			targetPath = path.Join(currentDir, targetPath)
 		}
-
-		fmt.Printf("  in loop read in targetPath: %s\n", targetPath)
 
 		src, err := os.Stat(md.getPath() + "files" + targetPath)
 		if !utils.IsHidden(targetPath) && err == nil && !src.IsDir() && checkBase(uuid, targetPath, "w", md) {
@@ -918,15 +894,11 @@ func cd(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDServ
 		targetPath = path.Join(currentDir, targetPath)
 	}
 
-	// print for terminal's sake
-	fmt.Printf("currentDir = %s\n", currentDir)
-	fmt.Printf("targetPath = %s\n", targetPath)
-
 	// check if the source dir exist
 	src, err := os.Stat(md.getPath() + "files" + targetPath)
 	if err != nil || utils.IsHidden(targetPath) { // not a path ie. not a dir OR a file
 
-		fmt.Println("Path is not a directory")
+		fmt.Println("\tPath is not a directory")
 
 		// notify the client that it is not a dir with error code "1"
 		w.WriteByte(1)
@@ -937,7 +909,7 @@ func cd(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDServ
 		// check if the source is indeed a directory or not
 		if !src.IsDir() {
 
-			fmt.Println("Path is not a directory")
+			fmt.Println("\tPath is not a directory")
 
 			// notify the client that it is not a dir with error code "1"
 			w.WriteByte(1)
@@ -945,7 +917,7 @@ func cd(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDServ
 
 		} else if !checkEntry(uuid, targetPath, "x", md) { // success!
 
-			fmt.Println("Access denied to dir " + targetPath)
+			fmt.Println("\tAccess denied to dir " + targetPath)
 			// notify success to client (no specific code, just not 1 or 0)
 			w.WriteByte(2)
 			w.Flush()
@@ -953,7 +925,7 @@ func cd(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDServ
 		} else {
 
 			// create a clean path that the user can display on the cmd line
-			fmt.Printf("Path \"%s\" is a directory\n", targetPath)
+			fmt.Printf("\tPath \"%s\" is a directory\n", targetPath)
 
 			w.WriteByte(3)
 			w.Flush()
@@ -986,7 +958,7 @@ func request(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *M
 	src, err := os.Stat(md.getPath() + "files" + filename)
 	if err != nil || utils.IsHidden(filename) { // not a path ie. not a dir OR a file
 
-		fmt.Println("File \"" + filename + "\" does not exist")
+		fmt.Println("\tFile \"" + filename + "\" does not exist")
 
 		// notify the client that it is not existant with code "2"
 		w.WriteByte(1)
@@ -995,7 +967,7 @@ func request(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *M
 
 	} else if src.IsDir() { // notify the client that the file exists with code "1"
 
-		fmt.Println("Path \"" + filename + "\" is a directory")
+		fmt.Println("\tPath \"" + filename + "\" is a directory")
 
 		// notify that is a dir
 		w.WriteByte(2)
@@ -1004,14 +976,14 @@ func request(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *M
 
 	} else if !checkFile(uuid, filename, "x", md) {
 
-		fmt.Println("Unauthorised access to request file")
+		fmt.Println("\tUnauthorised access to request file")
 		w.WriteByte(3)
 		w.Flush()
 		return nil
 
 	} else {
 
-		fmt.Println("File \"" + filename + "\" exists")
+		fmt.Println("\tFile \"" + filename + "\" exists")
 
 		// notify success
 		w.WriteByte(4)
@@ -1028,19 +1000,15 @@ func request(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *M
 		w.Flush()
 	}
 
-	fmt.Println(hash + ", " + unid)
-
 	md.stnodeDB.View(func(tx *bolt.Tx) error {
 		// Assume bucket exists and has keys
-		fmt.Println(2)
 		b := tx.Bucket([]byte("stnodes"))
 
 		v := b.Get([]byte(unid))
-		fmt.Println(3)
 
 		if v == nil {
 
-			fmt.Println("No stnode for: " + unid)
+			fmt.Println("\tNo stnode matching UNID: " + unid)
 			w.WriteByte(1)
 			w.Flush()
 			return nil
@@ -1052,9 +1020,7 @@ func request(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *M
 		var tmpStnode utils.Stnode
 		json.Unmarshal(v, &tmpStnode)
 
-		fmt.Println(tmpStnode)
-
-		fmt.Println("protocol: " + tmpStnode.Protocol + ", address: " + tmpStnode.NAddress)
+		fmt.Println("\tGot details for stnode: protocol: " + tmpStnode.Protocol + ", address: " + tmpStnode.NAddress)
 
 		w.WriteString(hash + "\n")
 		w.WriteString(tmpStnode.Protocol + "\n")
@@ -1086,7 +1052,7 @@ func send(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDSe
 	_, err = os.Stat(md.getPath() + "files" + filename)
 	if !checkBase(uuid, filename, "w", md) {
 
-		fmt.Println("User does not have permission to send to this directory.")
+		fmt.Println("\tUser does not have permission to send to this directory.")
 		w.WriteByte(3)
 		w.Flush()
 
@@ -1094,7 +1060,7 @@ func send(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDSe
 
 	} else if err != nil && !utils.IsHidden(filename) { // not a path ie. not a dir OR a file
 
-		fmt.Println("File \"" + filename + "\" does not exist")
+		fmt.Println("\tFile \"" + filename + "\" does not exist")
 
 		// notify the client that it is not already on system
 		w.WriteByte(2)
@@ -1102,7 +1068,7 @@ func send(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDSe
 
 	} else { // notify the client that the file exists with error code "1"
 
-		fmt.Println("File already exists in this directory")
+		fmt.Println("\tFile already exists in this directory")
 		w.WriteByte(1)
 		w.Flush()
 
@@ -1115,14 +1081,14 @@ func send(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDSe
 	if enc == 1 { // we are encrypting
 
 		protected = true
-		fmt.Println("Receiving encrypted file")
+		fmt.Println("\tReceiving encrypted file")
 		// send the pubkeys of users here
 
 		// get lenArgs
 		lenArgs, _ := r.ReadByte()
 
 		for i := 0; i < int(lenArgs); i++ {
-			fmt.Printf("About to query DB for time %d of %d\n", i, int(lenArgs))
+
 			md.userDB.View(func(tx *bolt.Tx) error {
 
 				b := tx.Bucket([]byte("users"))
@@ -1136,7 +1102,7 @@ func send(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDSe
 
 				if v == nil {
 
-					fmt.Println("No user profile matching uuid: " + tmpUuid)
+					fmt.Println("\tNo user profile matching UUID: " + tmpUuid)
 					w.WriteString("INV" + "\n")
 					w.Flush()
 					return nil
@@ -1145,7 +1111,7 @@ func send(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDSe
 				var tmpUser utils.User
 				json.Unmarshal(v, &tmpUser)
 
-				fmt.Println("Found user: " + tmpUser.Uname)
+				fmt.Println("\tFound user: " + tmpUser.Uname)
 
 				w.WriteString(tmpUuid + "\n")
 				w.Write([]byte(tmpUser.Pubkey.N.String() + "\n"))
@@ -1170,7 +1136,6 @@ func send(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDSe
 	var success byte
 	var unid string
 
-	fmt.Println(1)
 	md.stnodeDB.View(func(tx *bolt.Tx) error {
 		// Assume bucket exists and has keys
 		b := tx.Bucket([]byte("stnodes"))
@@ -1179,18 +1144,13 @@ func send(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDSe
 
 		for k, v := c.First(); k != nil; k, v = c.Next() {
 
-			fmt.Println(k)
-			fmt.Println(v)
-
 			w.WriteByte(1) // got a stnode
 			w.Flush()
 
 			var tmpStnode utils.Stnode
 			json.Unmarshal(v, &tmpStnode)
 
-			fmt.Println(tmpStnode)
-
-			fmt.Println("protocol: " + tmpStnode.Protocol + ", address: " + tmpStnode.NAddress)
+			fmt.Println("\tGot details for stnode: protocol: " + tmpStnode.Protocol + ", address: " + tmpStnode.NAddress)
 
 			w.WriteString(tmpStnode.Protocol + "\n")
 			w.WriteString(tmpStnode.NAddress + "\n")
@@ -1199,7 +1159,7 @@ func send(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDSe
 
 			success, _ = r.ReadByte()
 			if success != 1 {
-				fmt.Println("Successful send to stnode from client")
+				fmt.Println("\tSuccessful send to stnode from client")
 				return nil
 			}
 		}
@@ -1211,13 +1171,13 @@ func send(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDSe
 	})
 
 	if success != 2 {
-		fmt.Println("No stnodes were available to the client")
+		fmt.Println("\tNo stnodes were available to the client")
 		return nil
 	}
 
 	success, _ = r.ReadByte()
 	if success != 1 {
-		fmt.Println("Error on client side sending file to stnode")
+		fmt.Println("\tError on client side sending file to stnode")
 		return nil
 	}
 
@@ -1260,9 +1220,8 @@ func newUser(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (er
 
 		newUser.Pubkey.E, err = strconv.Atoi(strings.TrimSpace(pubKE))
 
-		fmt.Println("New user: " + newUser.Uname)
-		fmt.Println("recieved key")
-		fmt.Println("key stored in new user")
+		fmt.Println("\tNew user: " + newUser.Uname)
+		fmt.Println("\tRecieved " + newUser.Uname + "'s public key")
 
 		// Marshal user data into bytes.
 		buf, err := json.Marshal(newUser)
@@ -1270,12 +1229,9 @@ func newUser(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (er
 			return err
 		}
 
-		fmt.Println("writing uuid of: " + idStr)
+		fmt.Println("\tSending UUID " + idStr + " to " + newUser.Uname)
 		w.WriteString(idStr + "\n")
-		fmt.Println("written")
-
 		w.Flush()
-		fmt.Println("flushed")
 
 		// Persist bytes to users bucket.
 		return b.Put(itob(newUser.Uuid), buf)
@@ -1301,6 +1257,8 @@ func newStnode(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (
 		idStr := strconv.FormatUint(id, 10)
 		newStnode.Unid = idStr
 
+
+
 		// Receive the connection type and the address to be used for
 		// conneting to the stnode
 		protocol, _ := r.ReadString('\n')
@@ -1309,8 +1267,10 @@ func newStnode(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (
 		newStnode.Protocol = strings.TrimSpace(protocol)
 		newStnode.NAddress = strings.TrimSpace(nAddress)
 
-		fmt.Println("Received stnode " + idStr + "'s protocol: " + newStnode.Protocol)
-		fmt.Println("Received stnode " + idStr + "'s network address: " + newStnode.NAddress)
+		fmt.Println("\tNew stnode: " + idStr)
+
+		fmt.Println("\tReceived stnode " + idStr + "'s protocol: " + newStnode.Protocol)
+		fmt.Println("\tReceived stnode " + idStr + "'s network address: " + newStnode.NAddress)
 
 		// Marshal stnode data into bytes.
 		buf, err := json.Marshal(newStnode)
@@ -1318,13 +1278,10 @@ func newStnode(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (
 			return err
 		}
 
-		fmt.Println("writing unid to stnode")
+		fmt.Println("\tSending UNID " + idStr + " to stnode")
 
 		w.WriteString(idStr + "\n")
-		fmt.Println("written")
-
 		w.Flush()
-		fmt.Println("flushed")
 
 		// Persist bytes to stnodes bucket.
 		return b.Put([]byte(idStr), buf)
