@@ -71,6 +71,7 @@ func setup(r *bufio.Reader, w *bufio.Writer, thisUser *utils.User) (err error) {
 
 		err = utils.FileToStruct(utils.GetUserHome()+"/.mdfs/client/"+uname+"/.user_data", &thisUser)
 		w.WriteByte(9)
+		w.Flush()
 
 	}
 
@@ -266,9 +267,12 @@ func main() {
 			// without error.
 			os.Exit(0)
 
+		case "help":
+			help()
+
 		default:
 			// you clearly cannot type correctly
-			fmt.Println("Unrecognised command")
+			fmt.Println(args[0] + ": command not found")
 		}
 	}
 }
@@ -1186,4 +1190,10 @@ func deny(currentDir string, r *bufio.Reader, w *bufio.Writer, args []string, th
 
 	// 9
 	return
+}
+
+func help() {
+
+	help_str := "Massively Distributed Filesystem client, version 1.0-demo\nThe following is a list of available commands and their usage.\nAll commands will require the appropriate permissions (read, write or execute) to be successful\n\nUsage: ls		[-V] [directory...]\n \n       pwd\n       cd 		[directory]\n       mkdir		[directory...] \n       rmdir 		[directory...]\n      \n       send 		[filename] [-p [UUID...]]\n       request 		[filename]\n       rm 		[filename...]\n      \n       permit 		[-w (directory [rwx] | filename) | -g (directory [rwx] [GID...])]\n       deny 		[-w (directory [rwx] | filename) | -g (directory [rwx] [GID...])]\n      \n       create-group 	[groupname...]\n       delete-group 	[GID]\n      \n       group-add 	[GID] [UUID...]\n       group-remove 	[GID] [UUID...]\n       group-ls 	[GID]\n      \n       list-groups 	(-m | -o | -mV | -oV | -V)\n\n       exit\n\nReport bugs to <thewalla07@gmail.com> || <jacob.okeeffe22@mail.dcu.ie> with the subject line \"MDFS bug [short_description]\"\nFor complete documentation, see the README.md file at <https://github.com/CPSSD/MDFS/README.md>"
+	fmt.Println(help_str)
 }
