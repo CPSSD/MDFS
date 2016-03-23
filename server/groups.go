@@ -685,6 +685,7 @@ func checkEntry(uuid uint64, targetPath, mod string, md *MDService) (auth bool) 
 			owner, groups, permissions, err := getPerm(md.getPath() + "files/" + traverser + "/")
 			if err != nil {
 				fmt.Println("\t\tError: no .perm file exists at \"" + md.getPath() + "files" + traverser + "/.perm\"")
+				fmt.Printf("\tPermission denied for user %d\n", uuid)
 				return false
 			}
 
@@ -719,18 +720,22 @@ func checkEntry(uuid uint64, targetPath, mod string, md *MDService) (auth bool) 
 		}
 		if !auth {
 			return auth
+			fmt.Printf("\tPermission denied for user %d\n", uuid)
+
 		}
 
 		if i == len(dirs)-1 {
 			owner, groups, permissions, err := getPerm(md.getPath() + "files/" + traverser + "/")
 			if err != nil {
 				fmt.Println("\t\tError: no .perm file exists at \"" + md.getPath() + "files" + traverser + "/.perm\"")
+				fmt.Printf("\tPermission denied for user %d\n", uuid)
 				return false
 			}
 
 			hasGroup := false
 			if owner == uuid {
 
+				fmt.Printf("\tPermission granted for owner %d\n", uuid)
 				return true
 
 			} else if groups != nil {
@@ -762,17 +767,22 @@ func checkEntry(uuid uint64, targetPath, mod string, md *MDService) (auth bool) 
 
 			switch mod {
 			case "r":
-				return (hasGroup && permissions[0]) || permissions[3]
+				auth = (hasGroup && permissions[0]) || permissions[3]
 
 			case "w":
-				return (hasGroup && permissions[1]) || permissions[4]
+				auth = (hasGroup && permissions[1]) || permissions[4]
 
 			case "x":
-				return (hasGroup && permissions[2]) || permissions[5]
+				auth = (hasGroup && permissions[2]) || permissions[5]
 			}
 		}
 	}
 
+	if !auth {
+		fmt.Printf("\tPermission denied for user %d\n", uuid)
+	} else {
+		fmt.Printf("\tPermission granted for user %d\n", uuid)
+	}
 	//fmt.Printf("Auth = %b, Traverser = %s\n", auth, traverser)
 	return auth
 }
