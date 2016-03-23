@@ -543,7 +543,7 @@ func handleRequest(conn net.Conn, in TCPServer) (err error) {
 	}
 
 	// print when a connection to the client closes along with the error (if any)
-	fmt.Printf("User %d's connection has closed with code of %v and error of: %v\n", uintUuid, code, err)
+	fmt.Printf("User %d has disconnected\n\n", uintUuid)
 	return
 }
 
