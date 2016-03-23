@@ -32,7 +32,9 @@ mdservice
 ### Run the client software
 The client software is run as follows for the mdservice
 ```bash
-go install client/mdfs_client.go
+go install client/mdfs-client.go
+mdfs-client
+
 ```
 
 Once the client is run, you will be prompted for a username and the connection details of your metadata service. Once complete, you will be presented with the command prompt for the mdfs-client.
@@ -44,7 +46,7 @@ thewall:2:/ >>
 ### Available commands
 The following BASH-like commands are currently available to users.
 
-```bash
+```
 Massively Distributed Filesystem client, version 1.0-demo
 The following is a list of available commands and their usage.
 All commands will require the appropriate permissions (read, write or execute) to be successful
