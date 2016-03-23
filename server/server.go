@@ -210,7 +210,7 @@ func (st StorageNode) handleCode(uuid uint64, code uint8, conn net.Conn, r *bufi
 		var sendcode uint8
 		fp := st.getPath() + "files/" + hash
 		if _, err := os.Stat(fp); err == nil {
-			fmt.Println("File with hash " + hash + " exists") 
+			fmt.Println("File with hash " + hash + " exists")
 			sendcode = 3                 // file available code
 			err := w.WriteByte(sendcode) // let client know
 			if err != nil {
@@ -222,7 +222,7 @@ func (st StorageNode) handleCode(uuid uint64, code uint8, conn net.Conn, r *bufi
 			fmt.Println("Sending file " + hash)
 			utils.SendFile(conn, w, fp)
 		} else {
-			fmt.Println("File with hash "+ hash + " does not exist")
+			fmt.Println("File with hash " + hash + " does not exist")
 			sendcode = 4
 			err := w.WriteByte(sendcode) // let client know
 			if err != nil {
@@ -519,7 +519,7 @@ func handleRequest(conn net.Conn, in TCPServer) (err error) {
 		defer conn.Close()
 		return nil
 
-	} 
+	}
 
 	uuid, _ := r.ReadString('\n')
 	uintUuid, err = strconv.ParseUint(strings.TrimSpace(uuid), 10, 64)
@@ -527,7 +527,6 @@ func handleRequest(conn net.Conn, in TCPServer) (err error) {
 		conn.Close()
 		return err
 	}
-
 
 	fmt.Println("User " + strings.TrimSpace(uuid) + " has connected\n")
 
@@ -683,6 +682,11 @@ func ls(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDServ
 
 		if err != nil {
 
+			hidden := utils.IsHidden(targetPath)
+			if hidden {
+				fmt.Printf("\tCall to hidden filepath \"%s\" is not permitted\n", targetPath)
+			}
+
 			// if it is not a directory, skip it and try the next arg
 			w.WriteByte(0)
 			w.Flush()
@@ -798,7 +802,14 @@ func mkdir(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDS
 			targetPath = path.Join(currentDir, targetPath)
 		}
 
-		if !utils.IsHidden(targetPath) && checkBase(uuid, targetPath, "w", md) {
+		fmt.Printf("\tUser %d called mkdir \"%s\"\n", uuid, targetPath)
+
+		hidden := utils.IsHidden(targetPath)
+		if hidden {
+			fmt.Printf("\tCall to hidden filepath \"%s\" is not permitted\n", targetPath)
+		}
+
+		if !hidden && checkBase(uuid, targetPath, "w", md) {
 
 			os.Mkdir(md.getPath()+"files"+targetPath, 0777)
 
@@ -833,6 +844,8 @@ func rmdir(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDS
 			targetPath = path.Join(currentDir, targetPath)
 		}
 
+		fmt.Printf("\tUser %d called rmdir on: \"%s\"\n", uuid, targetPath)
+
 		// this will only remove a dir that is empty, else it does nothing
 		// BUG-NOTE: this command will also currently delete files (there is not
 		// a different command to rmdir an rm in golang), so a check to make sure
@@ -842,7 +855,13 @@ func rmdir(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDS
 		// but this is not needed
 
 		src, err := os.Stat(md.getPath() + "files" + targetPath)
-		if !utils.IsHidden(targetPath) && err == nil && src.IsDir() && checkBase(uuid, targetPath, "w", md) {
+
+		hidden := utils.IsHidden(targetPath)
+		if hidden {
+			fmt.Printf("\tCall to hidden filepath \"%s\" is not permitted\n", targetPath)
+		}
+
+		if !hidden && err == nil && src.IsDir() && checkBase(uuid, targetPath, "w", md) {
 			fi, _ := ioutil.ReadDir(md.getPath() + "files" + targetPath)
 			if len(fi) == 1 {
 
@@ -873,8 +892,16 @@ func rm(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDServ
 			targetPath = path.Join(currentDir, targetPath)
 		}
 
+		fmt.Printf("\tUser %d called rm on: \"%s\"\n", uuid, targetPath)
+
 		src, err := os.Stat(md.getPath() + "files" + targetPath)
-		if !utils.IsHidden(targetPath) && err == nil && !src.IsDir() && checkBase(uuid, targetPath, "w", md) {
+
+		hidden := utils.IsHidden(targetPath)
+		if hidden {
+			fmt.Printf("\tCall to hidden filepath \"%s\" is not permitted\n", targetPath)
+		}
+
+		if !hidden && err == nil && !src.IsDir() && checkBase(uuid, targetPath, "w", md) {
 			os.Remove(md.getPath() + "files" + targetPath)
 		}
 	}
@@ -894,9 +921,18 @@ func cd(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDServ
 		targetPath = path.Join(currentDir, targetPath)
 	}
 
+	fmt.Printf("\tUser %d called cd \"%s\"\n", uuid, targetPath)
+
 	// check if the source dir exist
 	src, err := os.Stat(md.getPath() + "files" + targetPath)
-	if err != nil || utils.IsHidden(targetPath) { // not a path ie. not a dir OR a file
+
+	hidden := utils.IsHidden(targetPath)
+	if hidden {
+		fmt.Printf("\tCall to hidden filepath \"%s\" is not permitted\n", targetPath)
+
+	}
+
+	if err != nil || hidden { // not a path ie. not a dir OR a file
 
 		fmt.Println("\tPath is not a directory")
 
@@ -954,9 +990,17 @@ func request(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *M
 		filename = path.Join(currentDir, filename)
 	}
 
+	fmt.Printf("\tUser %d called request on: \"%s\"\n", uuid, currentDir+filename)
+
 	// check if the filename exists
 	src, err := os.Stat(md.getPath() + "files" + filename)
-	if err != nil || utils.IsHidden(filename) { // not a path ie. not a dir OR a file
+
+	hidden := utils.IsHidden(filename)
+	if hidden {
+		fmt.Printf("\tCall to hidden filepath \"%s\" is not permitted\n", filename)
+	}
+
+	if err != nil || hidden { // not a path ie. not a dir OR a file
 
 		fmt.Println("\tFile \"" + filename + "\" does not exist")
 
@@ -1048,8 +1092,16 @@ func send(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDSe
 		filename = path.Join(currentDir, filename)
 	}
 
+	fmt.Printf("\tUser %d called send to \"%s\"\n", uuid, currentDir+filename)
+
 	// check if the filename exists already
 	_, err = os.Stat(md.getPath() + "files" + filename)
+
+	hidden := utils.IsHidden(filename)
+	if hidden {
+		fmt.Printf("\tCall to hidden filepath \"%s\" is not permitted\n", filename)
+	}
+
 	if !checkBase(uuid, filename, "w", md) {
 
 		fmt.Println("\tUser does not have permission to send to this directory.")
@@ -1058,9 +1110,9 @@ func send(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDSe
 
 		return nil
 
-	} else if err != nil && !utils.IsHidden(filename) { // not a path ie. not a dir OR a file
+	} else if err != nil && !hidden { // not a path ie. not a dir OR a file
 
-		fmt.Println("\tFile \"" + filename + "\" does not exist")
+		fmt.Println("\tFile \"" + filename + "\" does not already exist here")
 
 		// notify the client that it is not already on system
 		w.WriteByte(2)
@@ -1256,8 +1308,6 @@ func newStnode(conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (
 		id, _ := b.NextSequence()
 		idStr := strconv.FormatUint(id, 10)
 		newStnode.Unid = idStr
-
-
 
 		// Receive the connection type and the address to be used for
 		// conneting to the stnode
