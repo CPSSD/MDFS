@@ -22,21 +22,15 @@ import (
 
 func createGroup(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (err error) {
 
-	fmt.Println("Called create group")
-
 	// get lenArgs
 	lenArgs, _ := r.ReadByte()
-	fmt.Printf("lenArgs = %v\n", lenArgs)
 
 	for i := 1; i < int(lenArgs); i++ {
-
-		fmt.Printf("  in loop at pos %d ready to read\n", i)
 
 		var newGroup utils.Group
 
 		groupName, _ := r.ReadString('\n')
 		groupName = strings.TrimSpace(groupName)
-		fmt.Printf("  in loop read in groupName: %s\n", groupName)
 
 		// create the group in the database
 		err = md.userDB.Update(func(tx *bolt.Tx) (err error) {
@@ -52,16 +46,14 @@ func createGroup(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, m
 			newGroup.Members = append(newGroup.Members, uuid)
 			newGroup.Owner = uuid
 
-			fmt.Println("New group \"" + newGroup.Gname + "\" with owner id: " + strconv.FormatUint(uuid, 10))
+			fmt.Println("\tNew group \"" + newGroup.Gname + "\" with owner id: " + strconv.FormatUint(uuid, 10))
 
 			buf, err := json.Marshal(newGroup)
 			if err != nil {
 				return err
 			}
 
-			fmt.Println("writing Gid")
 			w.WriteString(idStr + "\n")
-			fmt.Println("written")
 			w.Flush()
 
 			return b.Put(itob(newGroup.Gid), buf)
@@ -78,14 +70,13 @@ func groupAdd(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *
 
 	// get lenArgs
 	lenArgs, _ := r.ReadByte()
-	fmt.Printf("lenArgs = %v\n", lenArgs)
 
 	// get details for group to add to
 	gid, _ := r.ReadString('\n')
 	gid = strings.TrimSpace(gid)
 	uintGid, err := strconv.ParseUint(strings.TrimSpace(gid), 10, 64)
 	if err != nil {
-		fmt.Println("Not a uint or gid")
+		fmt.Println("\t\tNot a uint or gid")
 		w.WriteByte(2)
 		w.Flush()
 		return nil
@@ -97,13 +88,11 @@ func groupAdd(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *
 
 		v := b.Get(itob(uintGid))
 
-		fmt.Println("Trying to get: " + gid)
-
 		if v == nil {
 
 			w.WriteByte(2)
 			w.Flush()
-			return fmt.Errorf("Bad access")
+			return fmt.Errorf("\t\tBad access")
 		}
 
 		var tmpGroup utils.Group
@@ -111,11 +100,9 @@ func groupAdd(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *
 
 		if tmpGroup.Owner != uuid {
 
-			fmt.Printf("Owner: %d, and uuid: %d\n", tmpGroup.Owner, uuid)
-
 			w.WriteByte(2)
 			w.Flush()
-			return fmt.Errorf("Bad access")
+			return fmt.Errorf("\t\tBad access")
 		}
 
 		// authorised and group exists
@@ -127,7 +114,7 @@ func groupAdd(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *
 
 	if err != nil {
 
-		fmt.Println("Invalid access to group: " + strings.TrimSpace(gid))
+		fmt.Println("\tInvalid access to group: " + strings.TrimSpace(gid))
 		return nil
 	}
 
@@ -136,17 +123,12 @@ func groupAdd(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *
 	// read in all users
 	for i := 2; i < int(lenArgs); i++ {
 
-		fmt.Printf("  in loop at pos %d ready to read\n", i)
-
 		user, _ := r.ReadString('\n')
 		user = strings.TrimSpace(user)
-
-		fmt.Printf("  in loop read in user to add: %s\n", user)
 
 		exists, _ := userExists(user, md.userDB)
 		if exists {
 
-			fmt.Println("Exists")
 			uintUuid, _ := strconv.ParseUint(strings.TrimSpace(user), 10, 64)
 			users = append(users, uintUuid)
 		}
@@ -167,11 +149,10 @@ func groupAdd(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *
 		newUsers := ""
 
 		for _, u := range users {
-			fmt.Printf("Checking user %d if exists in \n", u)
 
 			if !utils.Contains(u, tmpGroup.Members) {
 				tmpGroup.Members = append(tmpGroup.Members, u)
-				fmt.Printf("Adding user: %d\n", u)
+				fmt.Printf("\tAdding user: %d to group %d\n", u, tmpGroup.Gid)
 				newUsers = newUsers + strconv.FormatUint(u, 10) + ", "
 			}
 		}
@@ -184,9 +165,7 @@ func groupAdd(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *
 		var anGroup utils.Group
 		json.Unmarshal(buf, &anGroup)
 
-		fmt.Println("writing users added")
 		w.WriteString(newUsers + "\n")
-		fmt.Println("written")
 		w.Flush()
 
 		return b.Put(itob(tmpGroup.Gid), buf)
@@ -202,14 +181,13 @@ func groupRemove(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, m
 
 	// get lenArgs
 	lenArgs, _ := r.ReadByte()
-	fmt.Printf("lenArgs = %v\n", lenArgs)
 
 	// get details for group to remove from
 	gid, _ := r.ReadString('\n')
 	gid = strings.TrimSpace(gid)
 	uintGid, err := strconv.ParseUint(strings.TrimSpace(gid), 10, 64)
 	if err != nil {
-		fmt.Println("Not a uint or gid")
+		fmt.Println("\t\tNot a uint or gid")
 		w.WriteByte(2)
 		w.Flush()
 		return nil
@@ -222,13 +200,11 @@ func groupRemove(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, m
 
 		v := b.Get(itob(uintGid))
 
-		fmt.Println("Trying to get: " + gid)
-
 		if v == nil {
 
 			w.WriteByte(2)
 			w.Flush()
-			return fmt.Errorf("Bad access")
+			return fmt.Errorf("\t\tBad access")
 		}
 
 		var tmpGroup utils.Group
@@ -236,11 +212,9 @@ func groupRemove(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, m
 
 		if tmpGroup.Owner != uuid {
 
-			fmt.Printf("Owner: %d, and uuid: %d\n", tmpGroup.Owner, uuid)
-
 			w.WriteByte(2)
 			w.Flush()
-			return fmt.Errorf("Bad access")
+			return fmt.Errorf("\t\tBad access")
 		}
 
 		// authorised and group exists
@@ -252,7 +226,7 @@ func groupRemove(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, m
 
 	if err != nil {
 
-		fmt.Println("Invalid access to group: " + strings.TrimSpace(gid))
+		fmt.Println("\tInvalid access to group: " + strings.TrimSpace(gid))
 		return nil
 	}
 
@@ -261,12 +235,8 @@ func groupRemove(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, m
 	// read in all users
 	for i := 2; i < int(lenArgs); i++ {
 
-		fmt.Printf("  in loop at pos %d ready to read\n", i)
-
 		user, _ := r.ReadString('\n')
 		user = strings.TrimSpace(user)
-
-		fmt.Printf("  in loop read in user to remove: %s\n", user)
 
 		exists, _ := userExists(user, md.userDB)
 		if exists {
@@ -294,7 +264,8 @@ func groupRemove(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, m
 			for i, member := range tmpGroup.Members {
 				if member == u {
 
-					fmt.Println(u)
+					fmt.Printf("\tRemoving user: %d from group %d\n", u, tmpGroup.Gid)
+
 					tmpGroup.Members = append(tmpGroup.Members[:i], tmpGroup.Members[i+1:]...)
 					removedUsers = removedUsers + strconv.FormatUint(u, 10) + ", "
 					break
@@ -307,9 +278,7 @@ func groupRemove(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, m
 			return err
 		}
 
-		fmt.Println("writing users removed")
 		w.WriteString(removedUsers + "\n")
-		fmt.Println("written")
 		w.Flush()
 
 		return b.Put(itob(tmpGroup.Gid), buf)
@@ -328,7 +297,7 @@ func groupLs(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *M
 	gid = strings.TrimSpace(gid)
 	uintGid, err := strconv.ParseUint(gid, 10, 64)
 	if err != nil {
-		fmt.Println("Not a uint or gid")
+		fmt.Println("\t\tNot a uint or gid")
 		w.WriteByte(2)
 		w.Flush()
 		return nil
@@ -343,13 +312,11 @@ func groupLs(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *M
 
 		v := b.Get(itob(uintGid))
 
-		fmt.Println("Trying to get: " + gid)
-
 		if v == nil {
 
 			w.WriteByte(2)
 			w.Flush()
-			return fmt.Errorf("Bad access")
+			return fmt.Errorf("\t\tBad access")
 		}
 
 		var tmpGroup utils.Group
@@ -366,7 +333,7 @@ func groupLs(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *M
 
 	if err != nil {
 
-		fmt.Println("Invalid access to group: " + gid)
+		fmt.Println("\tInvalid access to group: " + gid)
 		return nil
 	}
 
@@ -374,13 +341,11 @@ func groupLs(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *M
 
 	for i, member := range members {
 
-		fmt.Printf("Member %d = uuid of %d\n", i, member)
+		fmt.Printf("\tMember no. %d = uuid of %d\n", i, member)
 		result = result + strconv.FormatUint(member, 10) + ", "
 	}
 
-	fmt.Println("writing members of group")
 	w.WriteString(result + "\n")
-	fmt.Println("written")
 	w.Flush()
 
 	if err != nil {
@@ -396,7 +361,7 @@ func deleteGroup(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, m
 	gid = strings.TrimSpace(gid)
 	uintGid, err := strconv.ParseUint(strings.TrimSpace(gid), 10, 64)
 	if err != nil {
-		fmt.Println("Not a uint or gid")
+		fmt.Println("\t\tNot a uint or gid")
 		w.WriteByte(2)
 		w.Flush()
 		return nil
@@ -409,13 +374,11 @@ func deleteGroup(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, m
 
 		v := b.Get(itob(uintGid))
 
-		fmt.Println("Trying to get: " + gid)
-
 		if v == nil {
 
 			w.WriteByte(2)
 			w.Flush()
-			return fmt.Errorf("Bad access: not a group")
+			return fmt.Errorf("\t\tBad access: not a group")
 		}
 
 		var tmpGroup utils.Group
@@ -423,16 +386,16 @@ func deleteGroup(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, m
 
 		if tmpGroup.Owner != uuid {
 
-			fmt.Printf("Owner: %d, and uuid: %d\n", tmpGroup.Owner, uuid)
-
 			w.WriteByte(2)
 			w.Flush()
-			return fmt.Errorf("Bad access: not owner")
+			return fmt.Errorf("\t\tBad access: not owner")
 		}
 
 		// authorised and group exists
 		w.WriteByte(1)
 		w.Flush()
+
+		fmt.Printf("\tdeleting group: %d\n", tmpGroup.Gid)
 
 		return b.Delete(itob(tmpGroup.Gid))
 	})
@@ -452,10 +415,8 @@ func userExists(uuid string, db *bolt.DB) (exists bool, err error) {
 		b := tx.Bucket([]byte("users"))
 		v := b.Get(itob(uuidUint))
 		if v != nil {
-			fmt.Println("v != nil")
 			exists = true
 		}
-		fmt.Println("v == nil")
 
 		return nil
 	})
@@ -465,8 +426,6 @@ func userExists(uuid string, db *bolt.DB) (exists bool, err error) {
 func listGroups(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (err error) {
 
 	mod, _ := r.ReadByte()
-
-	fmt.Println(mod)
 
 	switch mod {
 	case 1: // sendcode 26
@@ -482,8 +441,6 @@ func listGroups(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md
 }
 
 func listGroupsAll(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer, md *MDService) (err error) {
-
-	fmt.Printf("User listing: %d\n", uuid)
 
 	err = md.userDB.View(func(tx *bolt.Tx) error {
 
@@ -509,7 +466,6 @@ func listGroupsAll(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Writer,
 			w.WriteString(groups + "\n")
 			w.Flush()
 
-			fmt.Println("Written group " + tmpGroup.Gname)
 		}
 
 		w.WriteByte(2)
@@ -552,7 +508,6 @@ func listGroupsOwnerOf(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Wri
 			w.WriteString(groups + "\n")
 			w.Flush()
 
-			fmt.Println("Written group " + tmpGroup.Gname)
 		}
 
 		w.WriteByte(2)
@@ -595,7 +550,6 @@ func listGroupsMemberOf(uuid uint64, conn net.Conn, r *bufio.Reader, w *bufio.Wr
 			w.WriteString(groups + "\n")
 			w.Flush()
 
-			fmt.Println("Written group " + tmpGroup.Gname)
 		}
 
 		w.WriteByte(2)
@@ -612,7 +566,7 @@ func checkFile(uuid uint64, targetPath, mod string, md *MDService) (auth bool) {
 	//fmt.Println("Getting filestats for: " + path.Join(md.getPath(), "files", targetPath))
 	_, _, _, owner, groups, permissions, err := getFile(path.Join(md.getPath(), "files", targetPath))
 	if err != nil {
-		fmt.Println("NO FILE AT: " + md.getPath() + "files" + targetPath)
+		fmt.Println("\t\tNO FILE AT: " + md.getPath() + "files" + targetPath)
 		return false
 	}
 
@@ -680,7 +634,59 @@ func checkEntry(uuid uint64, targetPath, mod string, md *MDService) (auth bool) 
 	for i, d := range dirs {
 
 		traverser = path.Join("/", traverser, d)
-		if i != 0 {
+
+		if i == len(dirs)-1 {
+
+			owner, groups, permissions, err := getPerm(md.getPath() + "files/" + traverser + "/")
+			if err != nil {
+				fmt.Println("\t\tError: no .perm file exists at \"" + md.getPath() + "files" + traverser + "/.perm\"")
+				fmt.Printf("\tPermission denied for user %d\n", uuid)
+				return false
+			}
+
+			hasGroup := false
+			if owner != uuid {
+				auth = false
+
+			}
+			if groups != nil {
+
+				for _, g := range groups {
+					err = md.userDB.View(func(tx *bolt.Tx) error {
+
+						b := tx.Bucket([]byte("groups"))
+
+						v := b.Get(itob(g))
+
+						if v == nil {
+							return nil
+						}
+
+						var tmpGroup utils.Group
+						json.Unmarshal(v, &tmpGroup)
+
+						if utils.Contains(uuid, tmpGroup.Members) {
+							hasGroup = true
+						}
+						return nil
+					})
+					if hasGroup {
+						break
+					}
+				}
+			}
+
+			switch mod {
+			case "r":
+				auth = auth || (hasGroup && permissions[0]) || permissions[3]
+
+			case "w":
+				auth = auth || (hasGroup && permissions[1]) || permissions[4]
+
+			case "x":
+				auth = auth || (hasGroup && permissions[2]) || permissions[5]
+			}
+		} else if i != 0 {
 
 			owner, groups, permissions, err := getPerm(md.getPath() + "files/" + traverser + "/")
 			if err != nil {
@@ -717,61 +723,11 @@ func checkEntry(uuid uint64, targetPath, mod string, md *MDService) (auth bool) 
 				}
 			}
 			auth = (owner == uuid) || (hasGroup && permissions[2]) || permissions[5]
-		}
-		if !auth {
-			fmt.Printf("\tPermission denied for user %d\n", uuid)
-			return auth
 
-		}
+			if !auth {
+				fmt.Printf("\tPermission denied imm for user %d\n", uuid)
+				return auth
 
-		if i == len(dirs)-1 {
-			owner, groups, permissions, err := getPerm(md.getPath() + "files/" + traverser + "/")
-			if err != nil {
-				fmt.Println("\t\tError: no .perm file exists at \"" + md.getPath() + "files" + traverser + "/.perm\"")
-				fmt.Printf("\tPermission denied for user %d\n", uuid)
-				return false
-			}
-
-			hasGroup := false
-			if owner != uuid {
-				auth = false
-
-			} else if groups != nil {
-
-				for _, g := range groups {
-					err = md.userDB.View(func(tx *bolt.Tx) error {
-
-						b := tx.Bucket([]byte("groups"))
-
-						v := b.Get(itob(g))
-
-						if v == nil {
-							return nil
-						}
-
-						var tmpGroup utils.Group
-						json.Unmarshal(v, &tmpGroup)
-
-						if utils.Contains(uuid, tmpGroup.Members) {
-							hasGroup = true
-						}
-						return nil
-					})
-					if hasGroup {
-						break
-					}
-				}
-			}
-
-			switch mod {
-			case "r":
-				auth = auth || (hasGroup && permissions[0]) || permissions[3]
-
-			case "w":
-				auth = auth || (hasGroup && permissions[1]) || permissions[4]
-
-			case "x":
-				auth = auth || (hasGroup && permissions[2]) || permissions[5]
 			}
 		}
 	}
